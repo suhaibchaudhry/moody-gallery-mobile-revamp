@@ -1,0 +1,54 @@
+<?php
+function da_login_block_block($op = 'list', $delta = 0, $edit = array()) {
+	switch($op) {
+		case 'list':
+			$blocks = array();
+			
+			$blocks[0] = array(
+				'info' => t('Pretty Login/Logout Link Block'),
+        		'cache' => BLOCK_NO_CACHE,
+			);
+			$blocks[1] = array(
+				'info' => t('Phone Finder Buttons'),
+        		'cache' => BLOCK_NO_CACHE,
+			);
+			
+			return $blocks;
+			
+		case 'view':
+			drupal_add_css(drupal_get_path('module', 'da_login_block').'/css/da_login_block.css', 'module');
+			if($delta == 0) {
+				global $user;
+				if($user->uid) {
+					$link = l('My Account (Track Your Order)', 'user').' / '.l('Logout', 'logout');
+					$class = 'usrisin';
+				} else {
+					$link = l('Login (Track Your Order)', 'user');
+					$class = 'usrisout';
+				}
+
+				$content = '<div class="loginlinkscont '.$class.'">';
+				$content .= '<div class="loginlinks-ls">';
+				$content .= '</div>';
+				$content .= '<div class="loginlinks-mc">';
+				$content .= '<p>'.$link.'</p>';
+				$content .= '</div>';
+				$content .= '<div class="loginlinks-rs">';
+				$content .= '</div>';
+				$content .= '</div>';
+				return array(
+					'subject' => '<none>',
+					'content' => $content
+				);
+			} else {
+				$content = '<div class="phonefinderbtns">';
+				$content .= l('<img src="'.base_path().drupal_get_path('module', 'da_login_block').'/images/fphone.png" alt="Find a Phone" />', 'products/cellphones', array('html' => TRUE));
+				$content .= l('<img src="'.base_path().drupal_get_path('module', 'da_login_block').'/images/facc.png" alt="Find an Accessory" />', 'related', array('html' => TRUE));
+				$content .= '</div>';
+				return array(
+					'subject' => '<none>',
+					'content' => $content
+				);
+			}
+	}
+}

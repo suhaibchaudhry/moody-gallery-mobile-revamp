@@ -1,0 +1,21 @@
+<?php
+function fancyradios_form_alter(&$form, &$form_state, $form_id) {
+	if(strpos($form_id, 'uc_product_add_to_cart_form') !== FALSE && isset($form['attributes'])) {
+		drupal_add_css(drupal_get_path('module', 'fancyradios').'/css/fancyradios.css');
+		drupal_add_js(drupal_get_path('module', 'fancyradios').'/js/fancyradios.js');
+		foreach($form['attributes'] as $key => $attribute) {
+			if(is_array($attribute) && $attribute['#type'] == 'radios') {
+				$form['attributes'][$key]['#suffix'] = _fancyradios_render_prefix($key, $attribute);
+			}
+		}
+	}
+}
+
+function _fancyradios_render_prefix($aid, $attribute) {
+	$content = '<div class="fancy-options"><ul class="fancy-list">';
+	foreach($attribute['#options'] as $key => $option) {
+		$content .= '<li><a href="#" class="fancy-option" id="fancy-option-'.$aid.'-'.$key.'">'.$option.'</a></li>';
+	}
+	$content .= '</ul></div>';
+	return $content;
+}

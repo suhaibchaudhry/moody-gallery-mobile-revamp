@@ -1,0 +1,30 @@
+/**
+ * @file
+ * CSS file for the CCK slider module.
+ */
+
+.cck-slider-widget-wrapper {
+  margin: 20px;
+}
+
+.cck-slider-widget-min {
+  float: left;
+  font-weight: bold;
+}
+
+.cck-slider-widget-max {
+  float: right;
+  font-weight: bold;
+}
+
+.ui-slider-handle.ui-state-default.ui-corner-all {
+  left: 40%;
+  background: url(images/handle.png) no-repeat 50% 50% scroll;
+  height: 45px;
+  width: 20px;
+  position:absolute;
+  border: none;
+  text-align: center;
+  margin-top: -25px;
+  text-decoration: none;
+}

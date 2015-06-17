@@ -1,0 +1,6 @@
+name = Order Advanced Search
+description = Replaces the basic order number search with an advanced search for orders with numerous fields.
+package = D.A. CRM
+core = 6.x
+dependencies[] = uc_order
+dependencies[] = uc_store

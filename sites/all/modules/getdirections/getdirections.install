@@ -1,0 +1,20 @@
+<?php
+
+/**
+ * @file
+ * getdirections module installation.
+ */
+
+/**
+ * Implementation of hook_uninstall().
+  */
+function getdirections_uninstall() {
+  db_query("DELETE FROM {variable} WHERE name LIKE 'getdirections_%'");
+}
+
+function getdirections_update_6000() {
+  $g3 = variable_get('use_v3', 0);
+  variable_set('getdirections_use_v3', $g3);
+  variable_del('use_v3');
+  return array();
+}

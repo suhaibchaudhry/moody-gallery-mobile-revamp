@@ -1,0 +1,42 @@
+<?php
+
+class StormknowledgebaseTestCase extends DrupalWebTestCase {
+  public static function getInfo() {
+    return array(
+      'name' => 'Storm Knowledge base functionality',
+      'description' => 'Test the functionality of the Storm 
+Knowledge base module',
+      'group' => 'Storm',
+    );
+  }
+  
+  public function setUp() {
+    parent::setUp('storm', 'stormattribute', 'stormknowledgebase');
+    $privileged_user = $this->drupalCreateUser(array('Storm knowledgebase: add'));
+    $this->drupalLogin($privileged_user);
+  }
+
+  public function testStormknowledgebaseAccess() {
+    $this->drupalGet('storm/knowledgebase');
+    $this->assertResponse(403, t('Make sure access is denied to Storm Knowledgebase list for anonymous user'));
+
+    $basic_user = $this->drupalCreateUser();
+    $this->drupalLogin($basic_user);
+    $this->drupalGet('storm/knowledgebase');
+    $this->assertResponse(403, t('Make sure access is denied to Storm Knowledgebase list for basic user'));
+
+    $privileged_user = $this->drupalCreateUser(array('Storm knowledgebase: access'));
+    $this->drupalLogin($privileged_user);
+    $this->drupalGet('storm/knowledgebase');
+    $this->assertText(t('Knowledge base'), t('Make sure the correct page has been displayed by checking that the title is "Knowledge base".'));
+  }
+
+  public function testStormknowledgebaseCreate() {
+    $edit = array(
+      'title' => $this->randomName(32),
+      'body' => $this->randomName(64),
+    );
+    $this->drupalPost('node/add/stormknowledgebase', $edit, t('Save'));
+    $this->assertText(t('Knowledge base @title has been created.', array('@title' => $edit['title'])));
+  }
+}

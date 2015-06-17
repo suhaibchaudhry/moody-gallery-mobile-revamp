@@ -1,0 +1,4 @@
+name = Vocabulary Fields
+description = Adds display options to Vocabulary Fields that will be used in DA Custom Views Module. Adds term enable disable option in term edit page. Adds a children state, and number of columns field for used by da_jmenu module.
+package = D.A. Custom Modules
+core = 6.x

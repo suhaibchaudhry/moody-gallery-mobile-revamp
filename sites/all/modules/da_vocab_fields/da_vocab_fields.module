@@ -1,0 +1,100 @@
+<?php
+function da_vocab_fields_form_alter(&$form, &$form_state, $form_id) {
+	if($form_id == 'taxonomy_form_vocabulary') {
+		if(is_array($form['vid'])) {
+			$sql = "SELECT view, selection FROM {da_vocab_options} WHERE vid = %d";
+			$result = db_query($sql, $form['vid']['#value']);
+			$vid = db_fetch_object($result);
+			if($vid === FALSE) {
+				$default_setting = '0';
+				$default_style = '0';
+			} else {
+				$default_setting = $vid->view;
+				$default_style = $vid->selection;
+			}
+			
+			$form['#submit'][] = '_da_vocal_fields_submit';
+			
+			$form['da_custom'] = array(
+				'#type' => 'fieldset',
+				'#title' => 'DA Custom Views Settings',
+				'#collapsible' => TRUE,
+				'#weight' => -1
+			);
+			$form['da_custom']['display_setting'] = array(
+				'#type' => 'select',
+				'#title' => t('View Format'),
+				'#default_value' => $default_setting,
+  				'#options' => array(
+    				'0' => t('No Display'),
+    				'1' => t('Full Width View'),
+    				'2' => t('Half Width View')
+  				),
+  				'#description' => t('Full view takes up the entire width of the page. Half view takes up half the width of the page. None View will not display this vocabulary. Default CSS are for a particular theme override them for anyother theme.')
+			);
+			
+			$form['da_custom']['display_style'] = array(
+				'#type' => 'select',
+				'#title' => t('View Style'),
+				'#default_value' => $default_style,
+  				'#options' => array(
+    				'0' => t('No Display'),
+    				'1' => t('Image Selections'),
+    				'2' => t('Checklist Selections')
+  				),
+  				'#description' => t('Image Selections: Show term images within the vocabulary as a selection. Checklist Selection: show checklist as a selection of term names. The later allows multiple select while the former doesn\'t.')
+			);
+		} else {
+			$form['da_custom'] = array(
+				'#type' => 'fieldset',
+				'#title' => 'DA Custom Views Settings',
+				'#collapsible' => TRUE,
+				'#weight' => -1,
+				'#description' => 'Please save this vocabulary, and edit it to be able to change these option.'
+			);
+		}
+	} else if($form_id == 'taxonomy_form_term') {
+		if(empty($form["#term"]["tid"])) {
+			_da_vocab_fields_gen_form(TRUE, $form);
+		} else {
+			_da_vocab_fields_gen_form(FALSE, $form);
+		}
+	}
+}
+
+function _da_vocal_fields_submit(&$form, &$form_state) {
+	$view = $form['da_custom']['display_setting']['#value'];
+	$selection = $form['da_custom']['display_style']['#value'];
+	$vid = $form['vid']['#value'];
+	$sql = "REPLACE INTO {da_vocab_options} SET vid = %s, view = %s, selection = %s";
+	db_query($sql, $vid, $view, $selection);
+}
+
+function _da_vocab_fields_tid_state_submit(&$form, &$form_state) {
+	variable_set('da_vocab_fields_tid_state_'.$form["#term"]["tid"], $form['da_grid_enabled']['display_term']['#value']);
+}
+
+function _da_vocab_fields_gen_form($disabled, &$form) {
+			$default_setting = variable_get('da_vocab_fields_tid_state_'.$form["#term"]["tid"], '0');
+			
+			$form['#submit'][] = '_da_vocab_fields_tid_state_submit';
+
+			$form['da_grid_enabled'] = array(
+				'#type' => 'fieldset',
+				'#title' => 'Enable/Disable Term in Grid Pages',
+				'#collapsible' => TRUE
+				//'#weight' => -1
+			);
+				
+			$form['da_grid_enabled']['display_term'] = array(
+				'#type' => 'select',
+				'#title' => t('Term Status'),
+				'#default_value' => $default_setting,
+  				'#options' => array(
+    				'0' => t('Enable Term'),
+    				'1' => t('Disable Term')
+  				),
+				'#disabled' => $disabled,
+  				'#description' => t('You can disable or enable terms from appearing in grid pages. (Grid pages must abide by the D.A. Designers coding standards).')
+			);
+}

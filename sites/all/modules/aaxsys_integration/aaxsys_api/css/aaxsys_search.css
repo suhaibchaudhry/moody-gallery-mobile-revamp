@@ -1,0 +1,15 @@
+.unit-results .unit-row {
+	float: left;
+	margin: 0 0 10px;	
+	width: 735px;
+}
+.property-details, .property-image-cache, .property-actions {
+	float: left;
+}
+.property-actions {
+	float: right;
+	width: 100px;	
+}
+.property-details {
+	margin: 0 0 0 20px; 
+}

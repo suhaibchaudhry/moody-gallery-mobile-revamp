@@ -1,0 +1,80 @@
+<?php
+function da_block_image_form_alter(&$form, &$form_state, $form_id) {
+	if($form_id == 'block_admin_configure') {
+		$block_image->module = $form['module']['#value'].'-'.$form['delta']['#value'];
+		$block_image->image_path = _da_block_image_get_image_path($block_image->module);
+		
+		$form['#attributes'] = array('enctype' => "multipart/form-data");
+		$form['#submit'][] = '_da_block_image_process';
+		$form['submit']['#weight'] = 2;
+		$form['block_image'] = array(
+			'#type' => 'fieldset',
+			'#title' => t('Block Image'),
+			'#description' => 'The image path to the uploaded image will be available as variable $image in block.tpl.php theme files.',
+			'#collapsible' => TRUE,
+			'#collapsed' => TRUE,
+			'#weight' => 1
+ 		);
+		$form['block_image']['image_upload'] =	array(
+			'#type' => 'file',
+			'#title' => 'Upload Image'
+		);
+		if(!empty($block_image->image_path)) {
+			$form['block_image']['current_image'] = array(
+				'#type' => 'markup',
+				'#value' => '<div><strong>Current Image:</strong><br /><img src="'.base_path().$block_image->image_path.'" alt="Current Block Image" /></div>'
+			);
+			$form['block_image']['image_delete'] = array(
+				'#type' => 'checkbox',
+				'#title' => 'Delete Image',
+			);
+		}
+	}
+}
+
+function _da_block_image_process(&$form, &$form_state) {
+	$block_image = new stdClass;
+	$block_image->module = $form['module']['#value'].'-'.$form['delta']['#value'];
+	if($form['block_image']['image_delete']['#value']) {
+		_da_block_image_delete($block_image->module);
+		_da_block_image_row_remove($block_image->module);
+	} else {
+		$path = file_create_path('block_images');
+		if(file_check_directory($path, FILE_CREATE_DIRECTORY)) {
+			$old_image = _da_block_image_get_image_path($block_image->module);
+			if($file = file_save_upload('image_upload', array(), $path)) {
+				file_set_status($file, FILE_STATUS_PERMANENT);
+				file_delete($old_image);
+				$block_image->image_path = $file->destination;
+				_da_block_image_row_remove($block_image->module);
+				drupal_write_record('block_images', $block_image);
+			}
+		} else {
+			drupal_set_message('Failed to create directory, please make sure filesystem and permissions are setup properly.', 'error');	
+		}
+	}
+}
+
+function da_block_image_preprocess_block(&$variables) {
+	$block = $variables['block'];
+	$variables['block_image'] = _da_block_image_get_image_path($block->module.'-'.$block->delta);
+}
+
+function _da_block_image_delete($module, $verbose = TRUE) {
+	if(file_delete(_da_block_image_get_image_path($module)) && $verbose) {
+		drupal_set_message('Successfully deleted block image.');
+		return TRUE;
+	} elseif($verbose){
+		drupal_set_message('There was an error deleting block image.', 'error');
+		return FALSE;
+	}
+}
+
+function _da_block_image_row_remove($module) {
+	db_query("DELETE FROM {block_images} WHERE module = '%s'", $module);
+}
+
+function _da_block_image_get_image_path($module) {
+	$block_images = db_fetch_object(db_query("SELECT image_path FROM {block_images} WHERE module = '%s'", $module));
+	return $block_images->image_path;
+}

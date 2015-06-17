@@ -1,0 +1,25 @@
+<?php
+function crm_order_log_order_pane() {
+	$panes = array();
+	$panes[] = array(
+		'id' => 'crm_order_log_pane',
+		'callback' => '_crm_order_log_display',
+		'title' => t('Hidden Pane'),
+		'desc' => t('Loggs a view or edit on the order.'),
+		'class' => 'abs-left',
+		'weight' => 10,
+		'show' => array('view', 'customer')
+	);
+
+	return $panes;
+}
+
+function _crm_order_log_display($op, $order) {
+	global $user;
+	if($op == 'view' && !empty($user)) {
+		uc_order_comment_save($order->order_id, $user->uid, 'Order was pulled by employee.');
+	} elseif($op == 'customer' && !empty($user)) {
+		uc_order_comment_save($order->order_id, $user->uid, 'Order was viewed by customer.');
+	}
+	return '';
+}

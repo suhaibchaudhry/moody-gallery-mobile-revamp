@@ -1,0 +1,6 @@
+name = Price Sheet Editor
+description = Provides ability to edit product prices in bulk powered by SlickGrid.
+package = D.A. Custom Modules
+core = 6.x
+dependencies[] = uc_store
+dependencies[] = jquery_update

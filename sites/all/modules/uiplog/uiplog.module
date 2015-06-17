@@ -1,0 +1,25 @@
+<?php
+
+/**
+ * @file
+ *   User IP Log module file.
+ */
+
+/**
+ * Implementation of hook_views_api().
+ */
+function uiplog_views_api() {
+  return array(
+    'api' => views_api_version(),
+    'path' => drupal_get_path('module', 'uiplog') . '/views',
+  );
+}
+
+/**
+ * Implementation of hook_user().
+ */
+function uiplog_user($op, &$edit, &$account, $category = NULL) {
+  if ($op == 'login') {
+    db_query('INSERT into {uiplog} (uid, ip, timestamp) VALUES (%d, "%s", %d)', $account->uid, ip_address(), time());
+  }
+}

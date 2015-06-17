@@ -1,0 +1,534 @@
+<?php
+// $Id: storm_quicktt.module,v 1.19 2009/11/26 20:46:18 jurgenhaas Exp $
+
+/**
+ * @file
+ * The main file for the storm_quicktt module.
+ *
+ * eKomi is a web service that provides real customer feedback to e-comerce website
+ * and displays a certificate on that very same website.
+ */
+
+/**
+ * Implementation of hook_help().
+ */
+function storm_quicktt_help($path, $arg) {
+  switch ($path) {
+    case 'admin/storm/quicktt':
+      return '<p>'. t('Here you can set up parameters for Storm-Quick-TimeTracker.') .'</p>';
+    case 'admin/help#storm_quicktt':
+      return filter_filter('process', 2, NULL, file_get_contents(dirname(__FILE__) ."/README.txt"));
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function storm_quicktt_menu() {
+  $items = array();
+  $access_config = array('administer site configuration');
+  $items['admin/settings/storm/quicktt'] = array(
+    'title' => 'Storm Quick TimeTracker',
+    'description' => 'Configure Storm Quick TimeTracker',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('storm_quicktt_settings'),
+    'access arguments' => $access_config,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['stormquicktt/interact'] = array(
+    'page callback' => 'storm_quicktt_interact',
+    'access arguments' => array('access content'),
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+function storm_quicktt_add_resources($force = FALSE) {
+  if ($force || !module_exists('storm_dashboard')) {
+    drupal_add_css(drupal_get_path('module', 'storm_quicktt') .'/storm_quicktt.css');
+    drupal_add_js(drupal_get_path('module', 'storm_quicktt') .'/storm_quicktt.js');
+    drupal_add_js(drupal_get_path('module', 'storm_quicktt') .'/jquery.timers.js');
+    drupal_add_js(array('storm_quicktt_url' => url('stormquicktt/interact', array('absolute' => TRUE,))), 'setting');
+  }
+}
+
+/**
+ * Implementation of hook_block().
+ */
+function storm_quicktt_block($op = 'list', $delta = 0, $edit = array()) {
+  switch ($op) {
+    case 'list':
+      $blocks[0]['info'] = t('Storm Quick TimeTracker');
+      $blocks[0]['cache'] = BLOCK_NO_CACHE;
+      return $blocks;
+    case 'configure':
+      return;
+    case 'save':
+      return;
+    case 'view':
+      if (!user_access('Storm timetracking: add')) {
+        return;
+      }
+      storm_quicktt_add_resources();
+      $v = variable_get('storm_quicktt_project_stati', array('in progress'));
+      $sql  = "SELECT n.*, spr.* FROM {node} AS n
+              INNER JOIN {stormproject} AS spr
+              ON n.vid=spr.vid WHERE n.status=1 AND n.type='stormproject' AND (spr.projectstatus IN ('". implode("','", $v) ."'))";
+      $sql = stormproject_access_sql($sql);
+      $result = db_query($sql);
+      $options = array('0' => '- No billable work -');
+      while ($node = db_fetch_object($result)) {
+        $options[$node->nid] = $node->title;
+      }
+      $form = drupal_get_form('storm_quicktt_blockform', $options);
+
+      $blocks['subject'] = t('Quick Timetracking');
+      $blocks['content'] = <<<EOT
+        <div id="stormquicktt">
+          $form
+        </div>
+EOT;
+      return $blocks;
+  }
+}
+
+function storm_quicktt_blockform($form_state, $options) {
+  $pid = (isset($_SESSION['storm_quicktt_pid']) ? $_SESSION['storm_quicktt_pid'] : '0');
+  $start = storm_quicktt_start_link();
+  $mode = isset($_SESSION['storm_quicktt_mode']) ? $_SESSION['storm_quicktt_mode'] : TRUE;
+  $form = array();
+  $form['#cache'] = TRUE;
+  $form['selects'] = array(
+    '#tree' => TRUE,
+    '#prefix' => '<div class="selects">',
+    '#suffix' => '</div>',
+  );
+  $form['selects']['mode'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Auto-Start Tracking'),
+    '#default_value' => $mode,
+  );
+  $form['selects']['projects'] = array(
+    '#type' => 'select',
+    '#title' => t('Projects'),
+    '#options' => $options,
+    '#default_value' => $pid,
+    '#size' => 10,
+  );
+  if (!module_exists('storm_dashboard')) {
+    $form['selects']['info'] = array(
+      '#tree' => TRUE,
+      '#prefix' => '<div class="storm-quicktt-info">',
+      '#suffix' => '</div>',
+    );
+    $form['selects']['info']['time'] = array(
+      '#type' => 'item',
+      '#title' => t('Start time'),
+      '#value' => $start,
+    );
+  }
+  return $form;
+}
+
+function storm_quicktt_interact() {
+  if (!isset($_POST['op'])) {
+    exit;
+  }
+  $_GET['q'] = $_SERVER['HTTP_REFERER'];
+  $op = $_POST['op'];
+  $nid = $_POST['nid'];
+  $_SESSION['storm_quicktt_mode'] = ($_POST['mode'] == 'true');
+  switch ($op) {
+    case 'pause':
+      storm_quicktt_pause_time();
+      print 'OK';
+      break;
+    case 'resume':
+      storm_quicktt_resume_time();
+      print 'OK';
+      break;
+    case 'update':
+      if (!$_SESSION['storm_quicktt_update_active']) {
+        $_SESSION['storm_quicktt_update_active'] = TRUE;
+        print storm_quicktt_elapsed_time();
+        $_SESSION['storm_quicktt_update_active'] = FALSE;
+      }
+      else {
+        print 'OK';
+      }
+      break;
+    case 'note':
+      storm_quicktt_note_for_time($nid);
+      print 'OK';
+      break;
+    default:
+      if ($_SESSION['storm_quicktt_mode']) {
+        $msg = storm_quicktt_start(0, $nid, 0, 0, FALSE);
+        $title = t('Start time');
+        $link = storm_quicktt_start_link();
+      }
+      else {
+        if ($nid) {
+          $title = t('Action');
+          $link = l(t('Goto Project'), 'node/'. $nid);
+        }
+        else {
+          $title = t('Start time');
+          $link = storm_quicktt_start_link();
+        }
+      }
+      if (module_exists('storm_dashboard')) {
+        print $msg . _storm_dashboard_timetracking_info();
+      }
+      else {
+        print $msg .'<label>'. $title .'</label>'. $link;
+      }
+      break;
+  }
+  exit;
+}
+
+function storm_quicktt_start($oid = 0, $pid = 0, $tid = 0, $kid = 0, $show_msg = TRUE) {
+  $start = time();
+  if ($_SESSION['storm_quicktt_oid']) {
+    $msg = storm_quicktt_store_time($start, $show_msg);
+  }
+  $_SESSION['storm_quicktt_note_for_time'] = '';
+  if ($kid) { //Ticket-ID is set and we get the other IDs from the node
+    $node = node_load($kid);
+    $node->ticket_nid = $node->nid;
+  }
+  elseif ($tid) { //Task-ID is set and we get the other IDs from the node
+    $node = node_load($tid);
+    $node->task_nid = $node->nid;
+  }
+  elseif ($pid) { //Project-ID is set and we get the other IDs from the node
+    $node = node_load($pid);
+    $node->project_nid = $node->nid;
+  }
+  elseif ($oid) { //Organization-ID is set and we get the other IDs from the node
+    $node = node_load($oid);
+    $node->organization_nid = $node->nid;
+  }
+  else { //No ID is set and we do only store time if a timetracking was active
+    $node = array();
+  }
+  $_SESSION['storm_quicktt_oid'] = (isset($node->organization_nid)) ? $node->organization_nid : 0;
+  $_SESSION['storm_quicktt_pid'] = (isset($node->project_nid)) ? $node->project_nid : 0;
+  $_SESSION['storm_quicktt_tid'] = (isset($node->task_nid)) ? $node->task_nid : 0;
+  $_SESSION['storm_quicktt_kid'] = (isset($node->ticket_nid)) ? $node->ticket_nid : 0;
+  $_SESSION['storm_quicktt_start'] = (isset($node->organization_nid)) ? $start : 0;
+  $_SESSION['storm_quicktt_pause_start'] = 0;
+  $_SESSION['storm_quicktt_pause_collect'] = 0;
+  return $msg;
+}
+
+function storm_quicktt_pause_time() {
+  if (!storm_quicktt_tracking_active()) {
+    return;
+  }
+  if ($_SESSION['storm_quicktt_pause_start']) {
+    return;
+  }
+  $_SESSION['storm_quicktt_pause_start'] = time();
+}
+
+function storm_quicktt_resume_time() {
+  if (!$_SESSION['storm_quicktt_pause_start']) {
+    return;
+  }
+  $_SESSION['storm_quicktt_pause_collect'] += (time() - $_SESSION['storm_quicktt_pause_start']);
+  $_SESSION['storm_quicktt_pause_start'] = 0;
+}
+
+function storm_quicktt_elapsed_time() {
+  storm_quicktt_store_time();
+  if ($_SESSION['storm_quicktt_ttid']) {
+    return '<div>'. t('Elapsed time: ') . floor((time() - $_SESSION['storm_quicktt_start']) / 60) .'min</div>';
+  }
+  else {
+    return '';
+  }
+}
+
+function storm_quicktt_store_time($stop = 0, $show_msg = TRUE) {
+  if (!user_access('Storm timetracking: add')) {
+    return t('You have no permission to add timetracking.');
+  }
+  global $user;
+  $oid = $_SESSION['storm_quicktt_oid'];
+  $pid = $_SESSION['storm_quicktt_pid'];
+  $tid = $_SESSION['storm_quicktt_tid'];
+  $kid = $_SESSION['storm_quicktt_kid'];
+  $start = $_SESSION['storm_quicktt_start'];
+  if ($stop) {
+    storm_quicktt_resume_time();
+    $pause = $_SESSION['storm_quicktt_pause_collect'];
+    unset($_SESSION['storm_quicktt_oid']);
+    unset($_SESSION['storm_quicktt_pid']);
+    unset($_SESSION['storm_quicktt_tid']);
+    unset($_SESSION['storm_quicktt_kid']);
+    unset($_SESSION['storm_quicktt_start']);
+  }
+  if ($oid) {
+    $finish = ($stop) ? $stop : time();
+    $minutes = ceil(($finish-$start) / 60);
+    if ($minutes >= variable_get('storm_quicktt_mintime2record', 5)) {
+      if ($kid) {
+        $type = t('Ticket');
+        $node = node_load($kid);
+        $name = $node->title;
+      }
+      elseif ($tid) {
+        $type = t('Task');
+        $node = node_load($tid);
+        $name = $node->title;
+      }
+      elseif ($pid) {
+        $type = t('Project');
+        $node = node_load($pid);
+        $name = $node->title;
+      }
+      elseif ($oid) {
+        $type = t('Organization');
+        $node = node_load($oid);
+        $name = $node->title;
+      }
+      if (!isset($_SESSION['storm_quicktt_ttid'])) {
+        $node = new stdClass();
+        $node->uid = $user->uid;
+        $node->type = 'stormtimetracking';
+        $node->title = $name .' ('. variable_get('storm_quicktt_default_title', 'Auto-created by QuickTT') .')';
+        $node->organization_nid = $oid;
+        $node->project_nid = $pid;
+        $node->task_nid = $tid;
+        $node->ticket_nid = $kid;
+        $node->trackingdate = $start;
+        $node->timebegin = format_date($start, 'custom', 'H:i');
+        $node->billable = variable_get('stormtimetracking_billable_default', FALSE);
+      }
+      else {
+        $node = node_load($_SESSION['storm_quicktt_ttid']);
+      }
+      $node->timeend = format_date($finish, 'custom', 'H:i');
+      _stormtimetracking_beforesave($node);
+      $old_stormtimetracking_auto_duration = variable_get('stormtimetracking_auto_duration', TRUE);
+      variable_set('stormtimetracking_auto_duration', FALSE);
+      $node->billing_duration = $node->duration - ($pause / 3600);
+      if (empty($_SESSION['storm_quicktt_note_for_time']) OR empty($node->body)) {
+        $pos = FALSE;
+      }
+      else {
+        $pos = strpos($_SESSION['storm_quicktt_note_for_time'], $node->body);
+      }
+      if ($pos === FALSE) {
+        $node->body .= $_SESSION['storm_quicktt_note_for_time'];
+      }
+      else {
+        $node->body = $_SESSION['storm_quicktt_note_for_time'];
+      }
+      $_SESSION['storm_quicktt_note_for_time'] = $node->body;
+      node_save($node);
+      variable_set('stormtimetracking_auto_duration', $old_stormtimetracking_auto_duration);
+      drupal_get_messages(); //Clear messages to display only the following one.
+      if ($stop) {
+        unset($_SESSION['storm_quicktt_ttid']);
+      }
+      else {
+        $_SESSION['storm_quicktt_ttid'] = $node->nid;
+        return '';
+      }
+      $destination = ($_GET['q'] == 'stormdashboard/interact') ? 'stormdashboard' : $_GET['q'];
+      $link = l('edit', 'node/'. $node->nid .'/edit', array('query' => array('destination' => $destination)));
+      $msg = t('Time spent on %type %name: %min minutes (!edit).', array('%type' => $type, '%name' => $name, '%min' => $minutes, '!edit' => $link));
+    }
+    elseif (!$stop) {
+      return '';
+    }
+    else {
+      $msg = t('Time spent too short and not recorded.');
+    }
+  }
+  if ($show_msg) {
+    drupal_set_message($msg);
+  }
+  $_SESSION['storm_quicktt_pause_start'] = 0;
+  $_SESSION['storm_quicktt_pause_collect'] = 0;
+  return '<div class="stormquicktt-message">'. $msg .'</div>';
+}
+
+function storm_quicktt_note_for_time($text) {
+  $_SESSION['storm_quicktt_note_for_time'] .= '<p>'. $text .'</p>';
+}
+
+function storm_quicktt_tracking_active_nid() {
+  if (!storm_quicktt_tracking_active()) {
+    return 0;
+  }
+  $oid = $_SESSION['storm_quicktt_oid'];
+  $pid = $_SESSION['storm_quicktt_pid'];
+  $tid = $_SESSION['storm_quicktt_tid'];
+  $kid = $_SESSION['storm_quicktt_kid'];
+  if ($kid) { //Ticket-ID is set and we get the other IDs from the node
+    return $kid;
+  }
+  elseif ($tid) { //Task-ID is set and we get the other IDs from the node
+    return $tid;
+  }
+  elseif ($pid) { //Project-ID is set and we get the other IDs from the node
+    return $pid;
+  }
+  elseif ($oid) { //Organization-ID is set and we get the other IDs from the node
+    return $oid;
+  }
+  else { //No ID is set which shouldn't be possible
+    return 0;
+  }
+}
+
+function storm_quicktt_tracking_active_type() {
+  if (!storm_quicktt_tracking_active()) {
+    return NULL;
+  }
+  $oid = $_SESSION['storm_quicktt_oid'];
+  $pid = $_SESSION['storm_quicktt_pid'];
+  $tid = $_SESSION['storm_quicktt_tid'];
+  $kid = $_SESSION['storm_quicktt_kid'];
+  if ($kid) { //Ticket-ID is set and we get the other IDs from the node
+    return 'tkt';
+  }
+  elseif ($tid) { //Task-ID is set and we get the other IDs from the node
+    return 'tsk';
+  }
+  elseif ($pid) { //Project-ID is set and we get the other IDs from the node
+    return 'prj';
+  }
+  elseif ($oid) { //Organization-ID is set and we get the other IDs from the node
+    return 'org';
+  }
+  else { //No ID is set which shouldn't be possible
+    return NULL;
+  }
+}
+
+function storm_quicktt_tracking_active() {
+  return ($_SESSION['storm_quicktt_oid']);
+}
+
+function storm_quicktt_tracking_start() {
+  return storm_quicktt_tracking_active() ? $_SESSION['storm_quicktt_start'] : 0;
+}
+
+function storm_quicktt_tracking_info($extra = '') {
+  if (storm_quicktt_tracking_active()) {
+    $oid = $_SESSION['storm_quicktt_oid'];
+    $pid = $_SESSION['storm_quicktt_pid'];
+    $tid = $_SESSION['storm_quicktt_tid'];
+    $kid = $_SESSION['storm_quicktt_kid'];
+    $start = $_SESSION['storm_quicktt_start'];
+    if ($kid) { //Ticket-ID is set and we get the other IDs from the node
+      $node = node_load($kid);
+      $type = t('Ticket');
+    }
+    elseif ($tid) { //Task-ID is set and we get the other IDs from the node
+      $node = node_load($tid);
+      $type = t('Task');
+    }
+    elseif ($pid) { //Project-ID is set and we get the other IDs from the node
+      $node = node_load($pid);
+      $type = t('Project');
+    }
+    elseif ($oid) { //Organization-ID is set and we get the other IDs from the node
+      $node = node_load($oid);
+      $type = t('Organization');
+    }
+    else { //No ID is set which shouldn't be possible
+      return t('An error occured.');
+    }
+    return '<div class="info">'. t('Timetracking is active for %type %title.', array('%type' => $type, '%title' => $node->title)) .'</div>'.
+           '<div class="note">'. t('Take a note: !noteform', array('!noteform' => storm_quicktt_noteform())) .'</div>'.
+           '<div class="time">'. t('Started !time', array('!time' => storm_quicktt_start_link())) . $extra .'</div>';
+  }
+  else {
+    return t('Currently not tracking any time.');
+  }
+}
+
+function storm_quicktt_start_link() {
+  if (($_SESSION['storm_quicktt_kid'])) {
+    $nid = $_SESSION['storm_quicktt_kid'];
+  }
+  elseif (($_SESSION['storm_quicktt_tid'])) {
+    $nid = $_SESSION['storm_quicktt_tid'];
+  }
+  elseif (($_SESSION['storm_quicktt_pid'])) {
+    $nid = $_SESSION['storm_quicktt_pid'];
+  }
+  elseif (($_SESSION['storm_quicktt_oid'])) {
+    $nid = $_SESSION['storm_quicktt_oid'];
+  }
+  if ($nid) {
+    if ($_SESSION['storm_quicktt_pause_start']) {
+      $style_pause = ' style="display:none"';
+      $style_resume = '';
+    }
+    else {
+      $style_pause = '';
+      $style_resume = ' style="display:none"';
+    }
+    $text_paused = '<span class="storm-quicktt-resume"'. $style_resume .'>'. t('Paused') .'</span>';
+    $path = drupal_get_path('module', 'storm');
+    $title_pause = t('Pause');
+    $title_resume = t('Resume');
+    if (module_exists('storm_dashboard')) {
+      $base = 'stormdashboard';
+    }
+    else {
+      $base = 'node';
+    }
+    $text  = '<div class="storm-quicktt-time">'. l(format_date($_SESSION['storm_quicktt_start']), $base .'/'. $nid) .'</div>';
+    $text .= '<div class="storm-quicktt-timer-box"><span class="storm-quicktt-timer">'. storm_quicktt_elapsed_time() .'</span>'. $text_paused .'</div>';
+    $text .= '<span class="storm-quicktt-pause"'. $style_pause .'><img src="/'. $path .'/icons/status_on_hold.png" title="'. $title_pause .'" alt="'. $title_pause .'"/></span>';
+    $text .= '<span class="storm-quicktt-resume"'. $style_resume .'><img src="/'. $path .'/icons/status_in_progress.png" title="'. $title_resume .'" alt="'. $title_resume .'"/></span>';
+    return $text;
+  }
+  return format_date(time());
+}
+
+function storm_quicktt_noteform() {
+  return '<div><form><input id="edit-storm-quicktt-note" type="text" size="40"/></form></div>';
+}
+
+function storm_quicktt_settings() {
+  $form = array();
+  $form['storm_quicktt_mintime2record'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Minimum time to be recorded (minutes)'),
+    '#default_value' => variable_get('storm_quicktt_mintime2record', 5),
+  );
+  $form['storm_quicktt_default_title'] = array(
+    '#type' => 'textfield',
+    '#title' => t('Default title'),
+    '#default_value' => variable_get('storm_quicktt_default_title', 'Auto-created by QuickTT'),
+  );
+  $status_option_prj = array('none' => '-none-');
+  $sql = "SELECT  attr.akey AS akey,
+                  attr.avalue AS name
+              FROM {stormattribute} attr
+              WHERE (attr.domain in ('Project status')) AND (attr.isactive = 1)
+              ORDER BY attr.weight ASC";
+  $result = db_query($sql);
+  while ($attr = db_fetch_object($result)) {
+    $status_option_prj[$attr->akey] = $attr->name;
+  }
+  $form['storm_quicktt_project_stati'] = array(
+    '#type' => 'select',
+    '#title' => t('Display projects with following status'),
+    '#options' => $status_option_prj,
+    '#multiple' => TRUE,
+    '#size' => 5,
+    '#default_value' => variable_get('storm_quicktt_project_stati', array('in progress')),
+    '#description' => t('Select multiple values by pressing the ctrl-key while selecting with the mouse.'),
+  );
+  return system_settings_form($form);
+}

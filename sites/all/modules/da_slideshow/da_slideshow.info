@@ -1,0 +1,6 @@
+; $Id$
+name = Slide Show Block
+description = Takes in a node with a CCK Image Field, and turns all of the images into a JQuery image Slide Show. Optionaly Provide a CCK URL Field to link the image.
+package = D.A. Custom Modules
+core = 6.x
+

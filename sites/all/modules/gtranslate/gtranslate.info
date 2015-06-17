@@ -1,0 +1,17 @@
+name = GTranslate
+description = Uses Google power to translate your web site.
+version = 6.x-1.9
+core = 6.x
+; Information added by drupal.org packaging script on 2011-07-06
+version = "6.x-1.9"
+core = "6.x"
+project = "gtranslate"
+datestamp = "1357904911"
+
+
+; Information added by drupal.org packaging script on 2013-01-24
+version = "6.x-1.9"
+core = "6.x"
+project = "gtranslate"
+datestamp = "1359048408"
+

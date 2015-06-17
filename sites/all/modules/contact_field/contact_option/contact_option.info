@@ -1,0 +1,12 @@
+name = Contact form radio/checkbox field
+description = Add radios and checkboxes on contact form
+package = Contact fields
+core = 6.x
+dependencies[] = contact_field
+
+; Information added by Drupal.org packaging script on 2015-01-14
+version = "6.x-2.3"
+core = "6.x"
+project = "contact_field"
+datestamp = "1421243806"
+

@@ -1,0 +1,57 @@
+<?php
+function term_token_filter($op, $delta = 0, $format = -1, $text = '', $cache_id = 0) {
+  switch ($op) {
+    case 'list':
+		return array(0 => t('Term Token Filter'));
+
+    case 'description':
+		return t('Removes Term Tokens such as [t:vid:21] and [i:vid:21] with term names and term images respectively.');
+
+    case "process":
+		$token_matches = array();
+		$token_original = array();
+		$token_replace = array();
+
+		preg_match_all("/\[[A-Za-z]+:[A-Za-z]+:[A-Za-z0-9]+\]/", $text, $token_matches);
+		foreach($token_matches[0] as $token) {
+			$operation = '_term_token_process_'.substr($token, 1, (strpos($token, ':') - 1));
+			if(function_exists($operation)) {
+				$begin = strrpos($token, ':') + 1;
+				$length = strpos($token, ']') - $begin;
+				
+				$token_original[] = $token;
+				$token_replace[] = call_user_func($operation, substr($token, $begin, $length));
+			}
+		}
+		
+		$text = str_replace($token_original, $token_replace, $text);
+		return $text;
+	default:
+		return $text;
+  }
+}
+
+function _term_token_process_i($vid) {
+	$content = '<ul class="term-images">';
+	$terms = taxonomy_get_tree($vid);
+	foreach($terms as $term) {
+		$image = taxonomy_image_display($term->tid);
+		if(!empty($image)) {
+			$content .= '<li>'.l($image, 'taxonomy/term/'.$term->tid, array('html' => true)).'</li>';
+		}
+	}
+
+	$content .= '</ul>';
+	return $content;
+}
+
+function _term_token_process_t($vid) {
+	$content = '<ul class="terms">';
+	$terms = taxonomy_get_tree($vid);
+	foreach($terms as $term) {
+		$content .= '<li>'.l($term->name, 'taxonomy/term/'.$term->tid).'</li>';
+	}
+
+	$content .= '</ul>';
+	return $content;
+}

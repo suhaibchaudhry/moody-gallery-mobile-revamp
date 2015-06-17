@@ -1,0 +1,79 @@
+<?php
+function crm_order_ip_menu() {
+  $items = array();
+
+  $items['admin/settings/crm/crm_order_ip'] = array(
+    'title' => t('Order IP Settings'),
+    'description' => t('Setup ipinfodb API for fetching geo ip information.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('crm_order_ip_admin'),
+    'access arguments' => array('access administration pages'),
+    'type' => MENU_NORMAL_ITEM
+   );
+   
+   $items['crm_order_ip/json/%/%'] = array(
+   	'title' => t('JSON Geo IP Data'),
+	'descriptions' => t('A local proxy for channeling GeoIP data'),
+	'page callback' => 'crm_order_ip_json',
+	'page arguments' => array(2, 3),
+	'access arguments' => array('access content'),
+	'type' => MENU_CALLBACK
+   );
+
+  return $items;
+}
+
+function crm_order_ip_json($ip_address, $api_key) {
+	$callback = arg(4);
+	if(!empty($callback)) {
+		$callback = '&callback='.$callback;
+	}
+	drupal_set_header('Content-Type: application/json;');
+	print file_get_contents('http://api.ipinfodb.com/v3/ip-city/?key='.$api_key.'&ip='.$ip_address.'&format=json'.$callback);
+}
+
+function crm_order_ip_admin() {
+  $form = array();
+
+  $form['crm_order_ip_api_key'] = array(
+    '#type' => 'textfield',
+    '#title' => t('API Key'),
+    '#default_value' => variable_get('crm_order_ip_api_key', ''),
+    '#size' => 50,
+    '#maxlength' => 100,
+    '#description' => t("API Key of your ipinfodb.com account."),
+    '#required' => TRUE,
+  );
+
+  return system_settings_form($form);
+}
+
+function crm_order_ip_order_pane() {
+	$panes = array();
+	$panes[] = array(
+		'id' => 'crm_order_ip_pane',
+		'callback' => '_crm_order_ip_display',
+		'title' => t('Detected Customer and ISP Information'),
+		'desc' => t('Shows the customer IP Adress and Geo IP Location.'),
+		'class' => 'abs-left',
+		'weight' => 10,
+		'show' => array('view')
+	);
+
+	return $panes;
+}
+
+function _crm_order_ip_display($op, $order) {
+	$api_key = variable_get('crm_order_ip_api_key', '');
+	if($op == 'view' && !empty($api_key)) {
+		drupal_add_css(drupal_get_path('module', 'crm_order_ip').'/css/crm_order_ip_loder.css');
+		drupal_add_js(array('crm_order_ip' => array('api_key' => $api_key, 'customer_host' => $order->host)), 'setting');
+		drupal_add_js(drupal_get_path('module', 'crm_order_ip').'/js/crm_order_ip_fetch.js');
+
+		$content = '<strong>IP Address:</strong> '.$order->host;
+		$content .= '<div class="crm_order_ip_geo"><a href="javascript:void(0);">Get Geographical Information</a></div>';	
+		return $content;
+	} else {
+		return '';	
+	}
+}

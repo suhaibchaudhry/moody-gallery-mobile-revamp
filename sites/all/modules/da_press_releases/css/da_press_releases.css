@@ -1,0 +1,31 @@
+div.da-press-release-block p, div.da-research-center-block p {
+	font-family: Tahoma,Geneva,sans-serif;
+	font-size: 11px;
+}
+
+p.pr-title a {
+	color: #9D2D2D;
+	font-weight: bold;
+	text-decoration: none;
+}
+
+p.pr-date {
+	color:#4D4E53;
+	font-weight: bold;
+}
+
+p.pr-teaser {
+	color:#4D4E53;
+	line-height:15px;
+	padding: 10px 0;
+}
+
+p.pr-rmore a {
+	color:#A90000;
+	margin:10px 12px 0 0;
+	text-decoration:underline;
+}
+
+p.pr-rmore {
+	padding: 0 0 5px;
+}

@@ -1,0 +1,8 @@
+name = Zoom View
+description = Zoom View field formatter for image fields. Please note a hacked copy of jquery_update for DAUI is required for proper functioning.
+package = D.A. UI
+core = 6.x
+
+dependencies[] = imagecache
+dependencies[] = content
+dependencies[] = jquery_update

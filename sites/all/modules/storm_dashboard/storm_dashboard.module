@@ -1,0 +1,1227 @@
+<?php
+// $Id: storm_dashboard.module,v 1.21 2009/12/07 11:04:11 jurgenhaas Exp $
+
+/**
+ * @file
+ * The main file for the storm_dashboard module.
+ */
+
+/**
+ * Main interaction with JQuery on the dashboard in der browser.
+ */
+function storm_dashboard_interact() {
+  $_SESSION['storm_dashboard_ajax_mode'] = TRUE;
+  $id = $_POST['id'];
+  $nid = $_POST['nid'];
+  $op = $_POST['op'];
+  $mainView = $_POST['mainView'];
+  $updateBreadcrumb = (($mainView == 1) || ($mainView == 'true'));
+  switch ($op) {
+    case 'getStack':
+      if (isset($_SESSION['storm_dashboard_last_object']) && is_array($_SESSION['storm_dashboard_last_object'])) {
+        $result = array();
+        $id = NULL;
+        $last_nid = 0;
+        foreach ($_SESSION['storm_dashboard_last_object'] as $key => $nid) {
+          if ($nid) {
+            $last_nid = $nid;
+            if (isset($id)) {
+              $id .= '-storm-'. $key .'-active-content';
+            }
+            else {
+              $id = 'storm-'. $key .'-active-content';
+            }
+            $result = array_merge($result, _storm_dashboard_childs($id, $nid, FALSE));
+          }
+        }
+        _storm_dashboard_print_childs($result, $last_nid, $updateBreadcrumb);
+      }
+      break;
+    case 'getChilds':
+      _storm_dashboard_print_childs(_storm_dashboard_childs($id, $nid), $nid, $updateBreadcrumb);
+      node_tag_new($nid);
+      break;
+    case 'startTimeTracking':
+      if (_storm_dashboard_timetracking_available()) {
+        $oid = 0;
+        $pid = 0;
+        $tid = 0;
+        $kid = 0;
+        $y = explode('-', $id);
+        $nid = $y[2];
+        if ($nid) {
+          $node = node_load($nid);
+          switch ($node->type) {
+            case 'stormticket':
+              $kid = $nid;
+              break;
+            case 'stormtask':
+              $tid = $nid;
+              break;
+            case 'stormproject':
+              $pid = $nid;
+              break;
+            case 'stormorganization':
+              $oid = $nid;
+              break;
+          }
+        }
+        $msg = storm_quicktt_start($oid, $pid, $tid, $kid, FALSE);
+        if ($msg) {
+          $msg = '<div class="info">'. $msg .'</div>';
+        }
+        $msg .= _storm_dashboard_timetracking_info();
+      }
+      else {
+        $msg = _storm_dashboard_timetracking_not_available();
+      }
+      print json_encode(array(_storm_dashboard_command('modContent', '#sdb-timetracking .content', $msg),));
+      break;
+    case 'setAutoCollapseMode':
+      $_SESSION['storm_dashboard_auto_collapse'] = ($id == 1 OR $id == 'true');
+      break;
+    default:
+      break;
+  }
+  $_SESSION['storm_dashboard_ajax_mode'] = FALSE;
+  exit;
+}
+
+/**
+ * ===========================================================================
+ *
+ * Hooks
+ *
+ * ===========================================================================
+ */
+
+/**
+ * Implement hook_theme().
+ */
+function storm_dashboard_theme($existing, $type, $theme, $path) {
+  $items['storm_dashboard_org'] = array(
+    'arguments' => array(
+      'mainicon' => '',
+      'form' => '',
+      'msg' => '',
+      'filter' => '',
+      'class' => '',
+      ),
+  );
+  $items['storm_dashboard_prj'] = array(
+    'arguments' => array(
+      'title' => '',
+      'body' => '',
+      'icons' => '',
+      'tasks' => '',
+      'tickets' => '',
+      'notes' => '',
+      'timetracking' => '',
+      ),
+  );
+  $items['storm_dashboard_tsk'] = array(
+    'arguments' => array(
+      'title' => '',
+      'body' => '',
+      'icons' => '',
+      'tasks' => '',
+      'tickets' => '',
+      'notes' => '',
+      'timetracking' => '',
+      ),
+  );
+  $items['storm_dashboard_tkt'] = array(
+    'arguments' => array(
+      'title' => '',
+      'body' => '',
+      'icons' => '',
+      'timetracking' => '',
+      ),
+  );
+  $items['storm_dashboard_person'] = array(
+    'arguments' => array(
+      'title' => '',
+      'body' => '',
+      'icons' => '',
+      ),
+  );
+  $items['storm_dashboard_note'] = array(
+    'arguments' => array(
+      'title' => '',
+      'body' => '',
+      'icons' => '',
+      ),
+  );
+  $items['storm_dashboard_timetracking'] = array(
+    'arguments' => array(
+      'title' => '',
+      'body' => '',
+      'icons' => '',
+      ),
+  );
+  return $items;
+}
+
+/**
+ * Implement hook_theme_registry_alter().
+ */
+function storm_dashboard_theme_registry_alter(&$theme_registry) {
+  $theme_registry['stormorganization_view']['function'] = 'theme_storm_dashboard_org_view';
+  $theme_registry['stormproject_view']['function'] = 'theme_storm_dashboard_prj_view';
+  $theme_registry['stormtask_view']['function'] = 'theme_storm_dashboard_tsk_view';
+  $theme_registry['stormticket_view']['function'] = 'theme_storm_dashboard_tkt_view';
+  $theme_registry['stormnote_view']['function'] = 'theme_storm_dashboard_note_view';
+  $theme_registry['stormtimetracking_view']['function'] = 'theme_storm_dashboard_timetracking_view';
+  $theme_registry['stormperson_view']['function'] = 'theme_storm_dashboard_person_view';
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function storm_dashboard_menu() {
+  $items = array();
+  $access = array('Storm: access dashboard');
+  $items['stormdashboard'] = array(
+    'title' => 'Storm Dashboard',
+    'page callback' => 'storm_dashboard_dashboard',
+    'access arguments' => $access,
+    'parent' => '',
+    'type' => MENU_NORMAL_ITEM,
+  );
+  $items['stormdashboard/interact'] = array(
+    'page callback' => 'storm_dashboard_interact',
+    'access arguments' => $access,
+    'type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+
+/**
+ * Implementation of hook_init().
+ */
+function storm_dashboard_init() {
+  if (user_access('Storm: access dashboard')) {
+    drupal_add_css(drupal_get_path('module', 'storm_dashboard') . '/storm_dashboard.css');
+    drupal_add_css(drupal_get_path('module', 'storm') .'/storm-node.css');
+    drupal_add_js(drupal_get_path('module', 'storm_dashboard') . '/json2.js');
+    drupal_add_js(drupal_get_path('module', 'storm_dashboard') . '/storm_dashboard.js');
+    drupal_add_js(array('storm_dashboard_url' => url('stormdashboard/interact', array('absolute' => TRUE,))), 'setting');
+    drupal_add_js('misc/collapse.js');
+    if (module_exists('storm_quicktt')) {
+      storm_quicktt_add_resources(TRUE);
+    }
+  }
+}
+
+/**
+ * Implementation of hook_footer().
+ */
+function storm_dashboard_footer($main = 0) {
+  if (user_access('Storm: access dashboard') && user_access('Storm timetracking: add')) {
+    $msg = _storm_dashboard_timetracking_info();
+    return '<div id="sdb-timetracking"><div class="icon" title="Toggle Dashboard"> </div><div class="content">'. $msg .'</div></div><div id="sdb-light"><div class="border">'. storm_dashboard_dashboard(TRUE) .'</div></div>';
+  }
+}
+
+/**
+ * ===========================================================================
+ *
+ * Themeing
+ *
+ * ===========================================================================
+ */
+
+function theme_storm_dashboard_org_view($node, $teaser = FALSE, $page = FALSE) {
+  return _storm_dashboard_node_view(theme_stormorganization_view($node, $teaser, $page));
+}
+
+function theme_storm_dashboard_prj_view($node, $teaser = FALSE, $page = FALSE) {
+  return _storm_dashboard_node_view(theme_stormproject_view($node, $teaser, $page));
+}
+
+function theme_storm_dashboard_tsk_view($node, $teaser = FALSE, $page = FALSE) {
+  return _storm_dashboard_node_view(theme_stormtask_view($node, $teaser, $page));
+}
+
+function theme_storm_dashboard_tkt_view($node, $teaser = FALSE, $page = FALSE) {
+  return _storm_dashboard_node_view(theme_stormticket_view($node, $teaser, $page));
+}
+
+function theme_storm_dashboard_note_view($node, $teaser = FALSE, $page = FALSE) {
+  return _storm_dashboard_node_view(theme_stormnote_view($node, $teaser, $page));
+}
+
+function theme_storm_dashboard_timetracking_view($node, $teaser = FALSE, $page = FALSE) {
+  return _storm_dashboard_node_view(theme_stormtimetracking_view($node, $teaser, $page));
+}
+
+function theme_storm_dashboard_person_view($node, $teaser = FALSE, $page = FALSE) {
+  return _storm_dashboard_node_view(theme_stormperson_view($node, $teaser, $page));
+}
+
+function theme_storm_dashboard_org($mainicon, $form, $msg, $filter, $class) {
+  return <<<EOT
+<div id="sdb" class="$class">
+  <div id="sdb-filter">
+    $filter
+  </div>
+  <div id="sdb-org">
+    <div class="right orgtoggle">
+      <div id="sdb-org-notes">
+      </div>
+      <div id="sdb-org-timetracking">
+      </div>
+    </div>
+    <div class="main">
+      $mainicon
+      $form
+      <div id="sdb-org-icons">
+      </div>
+    </div>
+    <div class="left orgtoggle">
+      <div id="sdb-org-people">
+      </div>
+      <div id="sdb-org-people-detail">
+      </div>
+    </div>
+    <div class="center orgtoggle">
+      <div id="sdb-org-detail">
+      </div>
+    </div>
+    <div class="clear"> </div>
+    <div class="third first orgtoggle">
+      <div id="sdb-org-projects">
+      </div>
+    </div>
+    <div class="third orgtoggle">
+      <div id="sdb-org-tasks">
+      </div>
+    </div>
+    <div class="third orgtoggle">
+      <div id="sdb-org-tickets">
+      </div>
+    </div>
+    <div class="clear"> </div>
+  </div>
+
+  <div id="sdb-loading">$msg</div>
+
+  <div id="sdb-org-content">
+  </div>
+
+</div>
+EOT;
+}
+
+function theme_storm_dashboard_prj($title, $body, $icons, $tasks, $tickets, $notes, $timetracking) {
+  return <<<EOT
+<div id="sdb-prj">
+  <div class="right">
+    <div id="sdb-prj-notes">
+      $notes
+    </div>
+    <div id="sdb-prj-timetracking">
+      $timetracking
+    </div>
+  </div>
+  <div class="left wide">
+    <div id="sdb-prj-tasks">
+      $tasks
+    </div>
+    <div id="sdb-prj-tickets">
+      $tickets
+    </div>
+  </div>
+  <div class="center">
+    <h3 id="sdb-prj-title">$title <span>$icons</span></h3>
+    $body
+  </div>
+  <div class="clear"> </div>
+</div>
+
+<div id="sdb-prj-content">
+</div>
+EOT;
+}
+
+function theme_storm_dashboard_tsk($title, $body, $icons, $tasks, $tickets, $notes, $timetracking) {
+  return <<<EOT
+<div id="sdb-tsk">
+  <div class="right">
+    <div id="sdb-tsk-notes">
+      $notes
+    </div>
+    <div id="sdb-tsk-timetracking">
+      $timetracking
+    </div>
+  </div>
+  <div class="left wide">
+    <div id="sdb-tsk-tasks">
+      $tasks
+    </div>
+    <div id="sdb-tsk-tickets">
+      $tickets
+    </div>
+  </div>
+  <div class="center">
+    <h3 id="sdb-tsk-title">$title <span>$icons</span></h3>
+    $body
+  </div>
+  <div class="clear"> </div>
+</div>
+
+<div id="sdb-tsk-content">
+</div>
+EOT;
+}
+
+function theme_storm_dashboard_tkt($title, $body, $icons, $timetracking) {
+  return <<<EOT
+<div id="sdb-tkt">
+  <div class="right">
+    <div id="sdb-tkt-timetracking">
+      $timetracking
+    </div>
+  </div>
+  <div class="center">
+    <h3 id="sdb-tkt-title">$title <span>$icons</span></h3>
+    $body
+  </div>
+  <div class="clear"> </div>
+</div>
+
+<div id="sdb-tkt-content">
+</div>
+EOT;
+}
+
+function theme_storm_dashboard_person($title, $body, $icons) {
+  return <<<EOT
+    $body
+    <div><span>$icons</span></div>
+EOT;
+}
+
+function theme_storm_dashboard_note($title, $body, $icons) {
+  return <<<EOT
+<div id="sdb-note">
+  <div class="center">
+    <h3 id="sdb-note-title">$title <span>$icons</span></h3>
+    $body
+  </div>
+  <div class="clear"> </div>
+</div>
+EOT;
+}
+
+function theme_storm_dashboard_timetracking($title, $body, $icons) {
+  return <<<EOT
+<div id="sdb-tt">
+  <div class="center">
+    <h3 id="sdb-tt-title">$title <span>$icons</span></h3>
+    $body
+  </div>
+  <div class="clear"> </div>
+</div>
+EOT;
+}
+
+/**
+ * ===========================================================================
+ *
+ * Form building functions
+ *
+ * ===========================================================================
+ */
+
+function storm_dashboard_select_form($form_state, $pkey, $key, $title, $sql, $param, $size = 3) {
+  if ($key == 'org') {
+    $options = array('0' => t('- select one -'));
+  }
+  else {
+    $options = array();
+  }
+  if (!is_array($sql)) {
+    $sql = array($sql);
+  }
+  foreach ($sql as $s) {
+    $result = db_query(db_rewrite_sql($s), $param);
+    while ($option = db_fetch_object($result)) {
+      $last_seen = node_last_viewed($option->nid);
+      if ($last_seen) {
+        $num_new = comment_num_new($option->nid);
+        $new_text = $num_new ? '('. $num_new .') ' : '';
+      }
+      else {
+        $new_text = '('. t('New') .') ';
+      }
+      $options[$option->nid] = $new_text . $option->title;
+    }
+  }
+  $form = array();
+  if (isset($title)) {
+    $title = _storm_dashboard_icons($key, $param);
+    if ($key != 'org') {
+      $title .= _storm_dashboard_unselect_trigger();
+    }
+    $form[$key] = array(
+      '#type' => 'fieldset',
+      '#title' => $title,
+      '#collapsible' => FALSE,
+      '#html' => TRUE,
+      '#attributes' => array(
+        'class' => $key,
+      ),
+    );
+  }
+  $id = 'storm-'. $key .'-active';
+  if (isset($pkey)) {
+    $id = $pkey .'-'. $id;
+  }
+  $v = -1;
+  if (isset($_SESSION['storm_dashboard_last_object']) &&
+      isset($_SESSION['storm_dashboard_last_object'][$key]) &&
+      array_key_exists($_SESSION['storm_dashboard_last_object'][$key], $options)) {
+    $v = $_SESSION['storm_dashboard_last_object'][$key];
+  }
+  $form[$key]['select'] = array(
+    '#type' => 'select',
+    '#options' => $options,
+    '#default_value' => $v,
+    '#size' => $size,
+    '#attributes' => array(
+      'id' => $id,
+      'class' => 'storm-dashboard-active',
+    ),
+  );
+  if ($key == 'org') {
+    $form[$key]['collapse_on_select'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Auto-collapse'),
+      '#default_value' => $_SESSION['storm_dashboard_auto_collapse'],
+    );
+  }
+  return $form;
+}
+
+function storm_dashboard_select_form_array($pkey, $key, $title, $sql, $param) {
+  return drupal_get_form('storm_dashboard_select_form', $pkey, $key, $title, $sql, $param);
+}
+
+function storm_dashboard_dashboard($light = FALSE) {
+  if (!module_exists('stormorganization')) {
+    drupal_set_message(t('The required module stormorganization is not installed'), 'error');
+    return;
+  }
+  if (!isset($_SESSION['storm_dashboard_auto_collapse'])) {
+    $_SESSION['storm_dashboard_auto_collapse'] = TRUE;
+  }
+  $x = explode('/', $_GET['q']);
+  if (count($x) > 1 && ($x[0] == 'stormdashboard') && is_numeric($x[1])) {
+    $node = node_load($x[1]);
+    $oid = isset($node->organization_nid) ? $node->organization_nid : 0;
+    $pid = isset($node->project_nid) ? $node->project_nid : 0;
+    $tid = isset($node->task_nid) ? $node->task_nid : 0;
+    $kid = isset($node->ticket_nid) ? $node->ticket_nid : 0;
+    switch ($node->type) {
+      case 'stormorganization':
+        $oid = $node->nid;
+        break;
+      case 'stormproject':
+        $pid = $node->nid;
+        break;
+      case 'stormtask':
+        $tid = $node->nid;
+        break;
+      case 'stormticket':
+        $kid = $node->nid;
+        break;
+    }
+    $_SESSION['storm_dashboard_last_object'] = array(
+      'org' => $oid,
+      'prj' => $pid,
+      'tsk' => $tid,
+      'tkt' => $kid,
+    );
+  }
+  $param = array();
+  $prj_stati = "('". implode("','", storm_dashboard_filter_value('project')) ."')";
+  $tsk_stati = "('". implode("','", storm_dashboard_filter_value('task')) ."')";
+  $tkt_stati = "('". implode("','", storm_dashboard_filter_value('ticket')) ."')";
+  $sqls = array();
+  $sql = "SELECT n.*, sor.* FROM {node} AS n
+    INNER JOIN {stormorganization} AS sor
+      ON n.vid=sor.vid
+    INNER JOIN {stormproject} AS spr
+      ON n.nid=spr.organization_nid
+    WHERE n.status=1 AND n.type='stormorganization' AND spr.projectstatus IN $prj_stati
+    ORDER BY n.title";
+  $sqls[] = stormorganization_access_sql($sql);
+  $sql = "SELECT n.*, sor.* FROM {node} AS n
+    INNER JOIN {stormorganization} AS sor
+      ON n.vid=sor.vid
+    INNER JOIN {stormtask} AS sta
+      ON n.nid=sta.organization_nid
+    WHERE n.status=1 AND n.type='stormorganization' AND sta.taskstatus IN $tsk_stati
+    ORDER BY n.title";
+  $sqls[] = stormorganization_access_sql($sql);
+  $sql = "SELECT n.*, sor.* FROM {node} AS n
+    INNER JOIN {stormorganization} AS sor
+      ON n.vid=sor.vid
+    INNER JOIN {stormticket} AS sti
+      ON n.nid=sti.organization_nid
+    WHERE n.status=1 AND n.type='stormorganization' AND sti.ticketstatus IN $tkt_stati
+    ORDER BY n.title";
+  $sqls[] = stormorganization_access_sql($sql);
+  $form = drupal_get_form('storm_dashboard_select_form', NULL, 'org', NULL, $sqls, $param, 1);
+  $mainicon = _storm_dashboard_icons('org');
+  $msg = t('LOADING');
+  $filter = drupal_get_form('storm_dashboard_filter_form');
+  $class = $light ? 'light' : 'main';
+  $output = theme('storm_dashboard_org', $mainicon, $form, $msg, $filter, $class);
+  return $output;
+}
+
+function storm_dashboard_people($pkey, $org_id) {
+  if (!module_exists('stormperson')) {
+    return;
+  }
+  $title = t('People');
+  $sql  = "SELECT n.*, spe.* FROM {node} AS n INNER JOIN {stormperson} AS spe ON n.vid=spe.vid WHERE n.status=1 AND n.type='stormperson' ";
+  $sql .= " AND spe.organization_nid=%d";
+  $sql = stormperson_access_sql($sql);
+  $param = array($org_id);
+  return storm_dashboard_select_form_array($pkey, 'people', $title, $sql, $param);
+}
+
+function storm_dashboard_projects($pkey, $org_id) {
+  if (!module_exists('stormproject')) {
+    return;
+  }
+  $title = t('Projects');
+  $prj_stati = "('". implode("','", storm_dashboard_filter_value('project')) ."')";
+  $tsk_stati = "('". implode("','", storm_dashboard_filter_value('task')) ."')";
+  $tkt_stati = "('". implode("','", storm_dashboard_filter_value('ticket')) ."')";
+  $sqls = array();
+  $sql  = "SELECT n.*, spr.* FROM {node} AS n
+    INNER JOIN {stormproject} AS spr
+      ON n.vid=spr.vid
+    WHERE n.status=1
+      AND n.type='stormproject'
+      AND spr.projectstatus IN $prj_stati
+      AND spr.organization_nid=%d";
+  $sqls[] = stormproject_access_sql($sql);
+  $sql  = "SELECT n.*, spr.* FROM {node} AS n
+    INNER JOIN {stormproject} AS spr
+      ON n.vid=spr.vid
+    INNER JOIN {stormtask} AS sta
+      ON n.nid=sta.project_nid
+    WHERE n.status=1
+      AND n.type='stormproject'
+      AND sta.taskstatus IN $tsk_stati
+      AND spr.organization_nid=%d";
+  $sqls[] = stormproject_access_sql($sql);
+  $sql  = "SELECT n.*, spr.* FROM {node} AS n
+    INNER JOIN {stormproject} AS spr
+      ON n.vid=spr.vid
+    INNER JOIN {stormticket} AS sti
+      ON n.nid=sti.project_nid
+    WHERE n.status=1
+      AND n.type='stormproject'
+      AND sti.ticketstatus IN $tkt_stati
+      AND spr.organization_nid=%d";
+  $sqls[] = stormproject_access_sql($sql);
+  $param = array($org_id);
+  return storm_dashboard_select_form_array($pkey, 'prj', $title, $sqls, $param);
+}
+
+function storm_dashboard_tasks($pkey, $org_id, $prj_id = 0, $tsk_id = NULL) {
+  if (!module_exists('stormtask')) {
+    return;
+  }
+  $title = t('Tasks');
+  $param = array($org_id, $prj_id);
+  $tsk_stati = "('". implode("','", storm_dashboard_filter_value('task')) ."')";
+  $tkt_stati = "('". implode("','", storm_dashboard_filter_value('ticket')) ."')";
+  $sqls = array();
+  $sql  = "SELECT n.*, sta.* FROM {node} AS n
+    INNER JOIN {stormtask} AS sta
+      ON n.vid=sta.vid
+    WHERE n.status=1
+      AND n.type='stormtask'
+      AND sta.taskstatus IN $tsk_stati
+      AND sta.organization_nid=%d
+      AND sta.project_nid=%d
+      AND sta.parent_nid=%d
+    ORDER BY taskpriority DESC";
+  if (isset($tsk_id)) {
+    $param[] = $tsk_id;
+  }
+  else {
+    $param[] = 0;
+  }
+  $sqls[] = stormtask_access_sql($sql);
+  $sql  = "SELECT n.*, sta.* FROM {node} AS n
+    INNER JOIN {stormtask} AS sta
+      ON n.vid=sta.vid
+    INNER JOIN {stormticket} AS sti
+      ON n.nid=sti.task_nid
+    WHERE n.status=1
+      AND n.type='stormtask'
+      AND sti.ticketstatus IN $tkt_stati
+      AND sta.organization_nid=%d
+      AND sta.project_nid=%d
+      AND sta.parent_nid=%d
+    ORDER BY taskpriority DESC";
+  $sqls[] = stormtask_access_sql($sql);
+  return storm_dashboard_select_form_array($pkey, 'tsk', $title, $sqls, $param);
+}
+
+function storm_dashboard_tickets($pkey, $org_id, $prj_id = 0, $tsk_id = 0) {
+  if (!module_exists('stormticket')) {
+    return;
+  }
+  $title = t('Tickets');
+  $param = array($org_id, $prj_id, $tsk_id);
+  $tkt_stati = "('". implode("','", storm_dashboard_filter_value('ticket')) ."')";
+  $sql  = "SELECT n.*, sti.* FROM  {node} AS n
+    INNER JOIN {stormticket} AS sti
+      ON n.vid=sti.vid
+    WHERE n.status=1
+      AND n.type='stormticket'
+      AND sti.ticketstatus IN $tkt_stati
+      AND sti.organization_nid=%d
+      AND sti.project_nid=%d
+      AND sti.task_nid=%d
+    ORDER BY ticketpriority DESC";
+  $sql = stormticket_access_sql($sql);
+  return storm_dashboard_select_form_array($pkey, 'tkt', $title, $sql, $param);
+}
+
+function storm_dashboard_notes($pkey, $org_id, $prj_id = 0, $tsk_id = 0) {
+  if (!module_exists('stormnote')) {
+    return;
+  }
+  $title = t('Notes');
+  $param = array($org_id, $prj_id, $tsk_id);
+  $sql  = "SELECT n.title, sno.* FROM {node} AS n INNER JOIN {stormnote} AS sno ON n.vid=sno.vid WHERE n.status=1 AND n.type='stormnote' ";
+  $sql .= " AND sno.organization_nid=%d";
+  $sql .= " AND sno.project_nid=%d";
+  $sql .= " AND sno.task_nid=%d";
+  $sql = stormnote_access_sql($sql);
+  return storm_dashboard_select_form_array($pkey, 'note', $title, $sql, $param);
+}
+
+function storm_dashboard_timetracking($pkey, $org_id, $prj_id = 0, $tsk_id = 0, $tik_id = 0) {
+  if (!module_exists('stormtimetracking')) {
+    return;
+  }
+  $title = t('Time Tracking');
+  $param = array($org_id, $prj_id, $tsk_id, $tik_id);
+  $sql  = "SELECT n.*,  stt.* FROM {node} n INNER JOIN {stormtimetracking} stt ON n.vid=stt.vid WHERE n.status=1 AND n.type='stormtimetracking' ";
+  $sql .= " AND stt.organization_nid=%d";
+  $sql .= " AND stt.project_nid=%d";
+  $sql .= " AND stt.task_nid=%d";
+  $sql .= " AND stt.ticket_nid=%d";
+  $sql = stormtimetracking_access_sql($sql);
+  return storm_dashboard_select_form_array($pkey, 'timetracking', $title, $sql, $param);
+}
+
+/**
+ * ===========================================================================
+ *
+ * Helper functions
+ *
+ * ===========================================================================
+ */
+
+/**
+ * Called by storm_dashboard_interact to dynamically re-build the breadcrumb
+ */
+function _storm_dashboard_breadcrumb($nid) {
+  $node = node_load($nid);
+  $breadcrumb = array();
+  $breadcrumb[] = l(t('Home'), '<front>');
+  if ($node->organization_nid) {
+    $breadcrumb[] = l($node->organization_title, 'stormdashboard/'. $node->organization_nid);
+  }
+  if ($node->project_nid) {
+    $breadcrumb[] = l($node->project_title, 'stormdashboard/'. $node->project_nid);
+  }
+  if ($node->task_nid) {
+    $breadcrumb[] = l($node->task_title, 'stormdashboard/'. $node->task_nid);
+  }
+  if ($node->ticket_nid) {
+    $breadcrumb[] = l($node->ticket_title, 'stormdashboard/'. $node->ticket_nid);
+  }
+  $output = theme('breadcrumb', $breadcrumb);
+  return array(_storm_dashboard_command('replaceContent', '.breadcrumb', $output));
+}
+
+/**
+ * Called by storm_dashboard_interact to dynamically build the child elements
+ */
+function _storm_dashboard_childs($pkey, $nid, $updateStack = TRUE) {
+  $ka = explode('-', $pkey);
+  $i = count($ka) / 4 - 2;
+  if ($i < 0) {
+    $key = '';
+  }
+  else {
+    $key = $ka[($i * 4) + 1];
+  }
+  if (!$nid) {
+    if (strlen($key) == 3) {
+      if ($key == 'org' && ($i == 0) && $ka[5] == ('people')) {
+        $childs = array(
+          _storm_dashboard_command('modContent', '#sdb-org-people-detail', ''),
+        );
+      }
+      else {
+        $lo = $_SESSION['storm_dashboard_last_object'];
+        switch ($key) { //Intentionally no use of breaks here !!!
+          case 'org':
+            $lo['org'] = 0;
+          case 'prj':
+            $lo['prj'] = 0;
+          case 'tsk':
+            $lo['tsk'] = 0;
+          case 'tkt':
+            $lo['tkt'] = 0;
+        }
+        $_SESSION['storm_dashboard_last_object'] = $lo;
+        $childs = array(
+          _storm_dashboard_command('modContent', '#sdb-'. $key .'-content', ''),
+        );
+      }
+    }
+    else {
+      unset($_SESSION['storm_dashboard_last_object']);
+      $childs = array(
+        _storm_dashboard_command('modContent', '#sdb-org-icons', ''),
+        _storm_dashboard_command('modContent', '#sdb-org-detail', ''),
+        _storm_dashboard_command('modContent', '#sdb-org-people', ''),
+        _storm_dashboard_command('modContent', '#sdb-org-people-detail', ''),
+        _storm_dashboard_command('modContent', '#sdb-org-projects', ''),
+        _storm_dashboard_command('modContent', '#sdb-org-tasks', ''),
+        _storm_dashboard_command('modContent', '#sdb-org-tickets', ''),
+        _storm_dashboard_command('modContent', '#sdb-org-notes', ''),
+        _storm_dashboard_command('modContent', '#sdb-org-timetracking', ''),
+        _storm_dashboard_command('modContent', '#sdb-org-content', ''),
+      );
+    }
+  }
+  else {
+    $node = node_load($nid);
+    node_view($node);
+    $oid = 0;
+    $pid = 0;
+    $tid = 0;
+    $kid = 0;
+    switch ($node->type) {
+      case 'stormorganization':
+        $oid = $node->nid;
+        $childs = array(
+          _storm_dashboard_command('modContent', '#sdb-org-icons', _storm_dashboard_icons($node, TRUE) . _storm_dashboard_toggle_trigger()),
+          _storm_dashboard_command('modContent', '#sdb-org-detail', $node->body),
+          _storm_dashboard_command('modContent', '#sdb-org-people', storm_dashboard_people($pkey, $nid)),
+          _storm_dashboard_command('modContent', '#sdb-org-people-detail', ''),
+          _storm_dashboard_command('modContent', '#sdb-org-projects', storm_dashboard_projects($pkey, $nid)),
+          _storm_dashboard_command('modContent', '#sdb-org-tasks', storm_dashboard_tasks($pkey, $nid)),
+          _storm_dashboard_command('modContent', '#sdb-org-tickets', storm_dashboard_tickets($pkey, $nid)),
+          _storm_dashboard_command('modContent', '#sdb-org-notes', storm_dashboard_notes($pkey, $nid)),
+          _storm_dashboard_command('modContent', '#sdb-org-timetracking', storm_dashboard_timetracking($pkey, $nid)),
+          _storm_dashboard_command('modContent', '#sdb-org-content', ''),
+          _storm_dashboard_command('show', '#sdb-org .center', ''),
+          _storm_dashboard_command('show', '#sdb-org .right', ''),
+          _storm_dashboard_command('show', '#sdb-org .left', ''),
+          _storm_dashboard_command('show', '#sdb-org .third', ''),
+        );
+        break;
+      case 'stormproject':
+        $oid = $node->organization_nid;
+        $pid = $node->nid;
+        $childs = array(
+          _storm_dashboard_command('modContent', '#sdb-org-content', 
+            _storm_dashboard_childs_theme(
+              'storm_dashboard_prj', $node,
+              storm_dashboard_tasks($pkey, $oid, $nid),
+              storm_dashboard_tickets($pkey, $oid, $nid),
+              storm_dashboard_notes($pkey, $oid, $nid),
+              storm_dashboard_timetracking($pkey, $oid, $nid)
+            )));
+        if ($_SESSION['storm_dashboard_auto_collapse']) {
+          $childs[] = _storm_dashboard_command('hide', '#sdb-org .center', '');
+          $childs[] = _storm_dashboard_command('hide', '#sdb-org .right', '');
+          $childs[] = _storm_dashboard_command('hide', '#sdb-org .left', '');
+          $childs[] = _storm_dashboard_command('hide', '#sdb-org .third', '');
+        }
+        break;
+      case 'stormtask':
+        $oid = $node->organization_nid;
+        $pid = $node->project_nid;
+        $tid = $node->nid;
+        $childs = array(
+          _storm_dashboard_command('modContent', '#sdb-'. $key .'-content', 
+            _storm_dashboard_childs_theme(
+              'storm_dashboard_tsk', $node,
+              storm_dashboard_tasks($pkey, $oid, $pid, $nid),
+              storm_dashboard_tickets($pkey, $oid, $pid, $nid),
+              storm_dashboard_notes($pkey, $oid, $pid, $nid),
+              storm_dashboard_timetracking($pkey, $oid, $pid, $nid)
+            )),
+        );
+        break;
+      case 'stormticket':
+        $oid = $node->organization_nid;
+        $pid = $node->project_nid;
+        $tid = $node->task_nid;
+        $kid = $node->nid;
+        $childs = array(
+          _storm_dashboard_command('modContent', '#sdb-'. $key .'-content', 
+            _storm_dashboard_childs_theme(
+              'storm_dashboard_tkt', $node,
+              storm_dashboard_timetracking($pkey, $oid, $pid, $tid, $nid)
+            )),
+        );
+        break;
+      case 'stormperson':
+        $childs = array(
+          _storm_dashboard_command('modContent', '#sdb-org-people-detail', _storm_dashboard_childs_theme('storm_dashboard_person', $node)),
+        );
+        break;
+      case 'stormnote':
+        $childs = array(
+          _storm_dashboard_command('modContent', '#sdb-'. $key .'-content', _storm_dashboard_childs_theme('storm_dashboard_note', $node)),
+        );
+        break;
+      case 'stormtimetracking':
+        $childs = array(
+          _storm_dashboard_command('modContent', '#sdb-'. $key .'-content', _storm_dashboard_childs_theme('storm_dashboard_timetracking', $node, NULL, NULL, NULL, NULL, FALSE)),
+        );
+        break;
+      default:
+        $childs = array();
+    }
+  }
+  if (!isset($childs)) {
+    $childs = array(
+      _storm_dashboard_command('alert', '', 'Error (P='. $pkey .'/'. $nid .')'),
+    );
+  }
+  if ($oid && $updateStack) {
+    $_SESSION['storm_dashboard_last_object'] = array(
+      'org' => $oid,
+      'prj' => $pid,
+      'tsk' => $tid,
+      'tkt' => $kid,
+    );
+  }
+  return $childs;
+}
+
+/**
+ * Prepares the params and calls the theme function
+ */
+function _storm_dashboard_childs_theme($name, $node, $extra1 = NULL, $extra2 = NULL, $extra3 = NULL, $extra4 = NULL, $tticon = TRUE) {
+  $icons = _storm_dashboard_icons($node, $tticon);
+  $title = l($node->title, 'node/'. $node->nid);
+  $node = node_load($node->nid);
+  $body = node_view($node, FALSE, TRUE, TRUE) . comment_render($node);
+  if (isset($extra4)) {
+    return theme($name, $title, $body, $icons, $extra1, $extra2, $extra3, $extra4);
+  }
+  if (isset($extra3)) {
+    return theme($name, $title, $body, $icons, $extra1, $extra2, $extra3);
+  }
+  if (isset($extra2)) {
+    return theme($name, $title, $body, $icons, $extra1, $extra2);
+  }
+  if (isset($extra1)) {
+    return theme($name, $title, $body, $icons, $extra1);
+  }
+  return theme($name, $title, $body, $icons);
+}
+
+/**
+ * Builds the command array item to be JSONed before sending back to JQuery
+ */
+function _storm_dashboard_command($cmd, $selector, $content) {
+  return array(
+    'cmd' => $cmd,
+    'selector' => $selector,
+    'content' => $content,
+  );
+}
+
+/**
+ * Building icons for the dashboard
+ */
+function _storm_dashboard_icons($node, $param = array()) {
+  if (is_string($node)) {
+    switch ($node) {
+      case 'org':
+        $type = 'stormorganization';
+        break;
+      case 'prj':
+        $type = 'stormproject';
+        break;
+      case 'tsk':
+        $type = 'stormtask';
+        break;
+      case 'tkt':
+        $type = 'stormticket';
+        break;
+      case 'people':
+        $type = 'stormperson';
+        break;
+      case 'note':
+        $type = 'stormnote';
+        break;
+      case 'timetracking':
+        $type = 'stormtimetracking';
+        break;
+      default:
+        return '';
+    }
+    $names = array('organization', 'project', 'task', 'ticket');
+    $query = array();
+    $i = 0;
+    foreach ($param as $v) {
+      if ($v) {
+        $parent_type = 'storm'. $names[$i];
+        $nid = $v;
+      }
+      $query[$names[$i] .'_nid'] = $v;
+      $i++;
+    }
+    $org_q = $_GET['q'];
+    $_GET['q'] = 'stormdashboard';
+    $r = theme('storm_link', $parent_type, $type, $nid, 0);
+    $_GET['q'] = $org_q;
+    if (is_array($r)) {
+      return drupal_render($r);
+    }
+    return $r;
+  }
+  $tticon = ($param) ? '&nbsp;'. _storm_dashboard_timetracking_trigger(TRUE, $node->nid) : '';
+  $params = array('q' => 'stormdashboard');
+  return  storm_icon_edit_node($node, $params) .'&nbsp;'.
+          storm_icon_delete_node($node, $params) . $tticon;
+}
+
+/**
+ * Called by theme_storm_dashboard_TYPE_view to cleanup node
+ */
+function _storm_dashboard_node_view($node) {
+  if ($_SESSION['storm_dashboard_ajax_mode']) {
+    unset($node->content['links']);
+    unset($node->content['group1']);
+  }
+  return $node;
+}
+
+/**
+ * Takes the array for new childs or from stack refresh, adds the relevant
+ * action for displaying active timetracking item and prints that stringified
+ * to the browser using JSON
+ */
+function _storm_dashboard_print_childs($actions = array(), $nid, $updateBreadcrumb = TRUE) {
+  $type = _storm_dashboard_timetracking_active_type();
+  if (isset($type)) {
+    if (function_exists('_storm_dashboard_timetracking_active_nid')) {
+      $ttid = _storm_dashboard_timetracking_active_nid();
+      $actions[] = _storm_dashboard_command('addClass', '#sdb-'. $type .' #storm-tt-'. $ttid .'.sdb-timetracking-trigger', 'timetracking-active');
+    }
+  }
+  if ($updateBreadcrumb) {
+    $actions = array_merge($actions, _storm_dashboard_breadcrumb($nid));
+  }
+  print json_encode($actions);
+}
+
+/**
+ * Returns the active node id for which time tracking is active
+ */
+function _storm_dashboard_timetracking_active_nid() {
+  if (!_storm_dashboard_timetracking_available()) {
+    return 0;
+  }
+  return storm_quicktt_tracking_active_nid();
+}
+
+/**
+ * Returns the active node type for which time tracking is active
+ */
+function _storm_dashboard_timetracking_active_type() {
+  if (!_storm_dashboard_timetracking_available()) {
+    return NULL;
+  }
+  return storm_quicktt_tracking_active_type();
+}
+
+/**
+ * Returns if the storm_quicktt module is available
+ */
+function _storm_dashboard_timetracking_available() {
+  return module_exists('storm_quicktt');
+}
+
+/**
+ * Returns sanitized text and icons for info box
+ */
+function _storm_dashboard_timetracking_info() {
+  if (_storm_dashboard_timetracking_available()) {
+    $msg = storm_quicktt_tracking_info(_storm_dashboard_timetracking_trigger(FALSE));
+  }
+  else {
+    $msg = _storm_dashboard_timetracking_not_available();
+  }
+  return $msg;
+}
+
+/**
+ * Returns text for info box if the module storm_quicktt is not available
+ */
+function _storm_dashboard_timetracking_not_available() {
+  return l(t('Storm Quick TimeTracking not installed'), 'http://drupal.org/project/storm_quicktt');
+}
+
+/**
+ * Returns the sanitized clickable icon to start/stop time tracking
+ */
+function _storm_dashboard_timetracking_trigger($startmode, $nid = 0) {
+  if (!user_access('Storm timetracking: add')) {
+    return '';
+  }
+  $path = drupal_get_path('module', 'storm');
+  if ($startmode) {
+    $title = t('Start time tracking.');
+    $img = 'images/timetrackings.png';
+  }
+  else {
+    if (storm_quicktt_tracking_active()) {
+      $title = t('Stop time tracking.');
+      $img = 'icons/dialog_close.png';
+    }
+    else {
+      return '';
+    }
+  }
+  return '<span id="storm-tt-'. $nid .'" class="sdb-timetracking-trigger">'.
+      '<img src="/'. $path .'/'. $img .'" title="'. $title .'" alt="'. $title .'"/>'.
+      '</span>';
+}
+
+/**
+ * Returns the sanitized and clickable icon to toggle visibility of org-block
+ */
+function _storm_dashboard_toggle_trigger() {
+  $path = drupal_get_path('module', 'storm');
+  $title = t('Hide/Show');
+  $img = 'icons/status_on_hold.png';
+  return '<span class="toggle">'.
+      '<img src="/'. $path .'/'. $img .'" title="'. $title .'" alt="'. $title .'"/>'.
+      '</span>';
+}
+
+/**
+ * Returns the sanitized and clickable icon to unselect element in dashboard
+ */
+function _storm_dashboard_unselect_trigger() {
+  $path = drupal_get_path('module', 'storm');
+  $title = t('Unselect');
+  $img = 'icons/dialog_close.png';
+  return '<span class="storm-dashboard-unselect">'.
+      '<img src="/'. $path .'/'. $img .'" title="'. $title .'" alt="'. $title .'"/>'.
+      '</span>';
+}
+
+/**
+ * ===========================================================================
+ *
+ * Filter functions
+ *
+ * ===========================================================================
+ */
+
+function storm_dashboard_filter_value($type, $value = NULL) {
+  global $user;
+  $vkey = 'storm_dashboard_user_'. $user->uid .'_var';
+  $s = variable_get($vkey, array());
+  $key = 'storm_dashboard_'. $type .'_stati';
+  if (isset($value)) {
+    //Set value
+    $s[$key] = $value;
+    variable_set($vkey, $s);
+  }
+  else {
+    //Get value
+    if (!isset($s[$key])) {
+      $s[$key] = array('in progress');
+    }
+    elseif (in_array('all', $s[$key])) {
+      $s[$key] = array_keys(storm_dashboard_get_stati($type));
+    }
+    return $s[$key];
+  }
+}
+
+function storm_dashboard_filter_form($form_state) {
+  $form = array();
+  $form['storm_dashboard_filter'] = array(
+    '#type' => 'fieldset',
+    '#title' => t('Filter'),
+    '#collapsible' => TRUE,
+    '#collapsed' => TRUE,
+  );
+  $form['storm_dashboard_filter']['storm_dashboard_project_stati'] = array(
+    '#type' => 'select',
+    '#title' => t('Projects status filter'),
+    '#options' => storm_dashboard_get_stati('Project'),
+    '#multiple' => TRUE,
+    '#size' => 5,
+    '#default_value' => storm_dashboard_filter_value('project'),
+  );
+  $form['storm_dashboard_filter']['storm_dashboard_task_stati'] = array(
+    '#type' => 'select',
+    '#title' => t('Tasks status filter'),
+    '#options' => storm_dashboard_get_stati('Task'),
+    '#multiple' => TRUE,
+    '#size' => 5,
+    '#default_value' => storm_dashboard_filter_value('task'),
+  );
+  $form['storm_dashboard_filter']['storm_dashboard_ticket_stati'] = array(
+    '#type' => 'select',
+    '#title' => t('Tickets status filter'),
+    '#options' => storm_dashboard_get_stati('Ticket'),
+    '#multiple' => TRUE,
+    '#size' => 5,
+    '#default_value' => storm_dashboard_filter_value('ticket'),
+  );
+  $form['storm_dashboard_filter']['storm_dashboard_filter_submit'] = array(
+    '#type' => 'submit',
+    '#value' => t('Filter'),
+  );
+  return $form;
+}
+
+function storm_dashboard_filter_form_submit($form, $form_state) {
+  storm_dashboard_filter_value('project', $form_state['values']['storm_dashboard_project_stati']);
+  storm_dashboard_filter_value('task', $form_state['values']['storm_dashboard_task_stati']);
+  storm_dashboard_filter_value('ticket', $form_state['values']['storm_dashboard_ticket_stati']);
+}
+
+function storm_dashboard_get_stati($type) {
+  $status_option = array('all' => t('- no filter -'));
+  $sql = "SELECT  attr.akey AS akey,
+                  attr.avalue AS name
+              FROM {stormattribute} attr
+              WHERE (attr.domain in ('$type status')) AND (attr.isactive = 1)
+              ORDER BY attr.weight ASC";
+  $result = db_query($sql);
+  while ($attr = db_fetch_object($result)) {
+    $status_option[$attr->akey] = $attr->name;
+  }
+  return $status_option;
+}

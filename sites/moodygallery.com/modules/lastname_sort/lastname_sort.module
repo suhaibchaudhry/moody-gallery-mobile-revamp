@@ -1,0 +1,76 @@
+<?php
+function lastname_sort_init() {
+	if (drupal_is_front_page()) {
+		drupal_add_js(drupal_get_path('module', 'lastname_sort').'/js/front-grid.js');
+		drupal_add_css(drupal_get_path('module', 'lastname_sort').'/css/front-grid.css');
+	}
+}
+function lastname_sort_views_query_alter(&$view, &$query) {
+	if($view->name == 'artists') {
+		$query->orderby[1] = "REPLACE(SUBSTRING(node.title, LENGTH(node.title)-INSTR(REVERSE(node.title), ' ')+2), 'Bloom', 'Manual') ASC";
+	}
+}
+
+function lastname_sort_menu() {
+	$items['admin/content/edit-front'] = array(
+        'title' => t('Edit Front Page'),
+        'description' => t('Edit front page settings.'),
+        'page callback' => 'moody_edit_front',
+        'access arguments' => array('administer nodes'),
+		'type' => MENU_NORMAL_ITEM,
+    );
+
+    return $items;
+}
+
+function moody_edit_front() {
+	return drupal_get_form('moody_edit_form');
+}
+
+function moody_edit_form() {
+	$form = array();
+	
+	$form['mood_front_items'] = array(
+		'#type' => 'select',
+		'#title' => t('Current Exhibitions'),
+		'#description' => 'The number for current exhibitions to display on the front page.',
+		'#default_value' => moody_get_front_value(),
+		'#options' => array(1 => 1, 2 => 2, 3 => 3),
+		'#attributes' => array('style' => 'width: 320px;'),
+	);
+	
+	$form['save'] = array(
+		'#type' => 'submit',
+		'#value' => 'Save'
+	);
+
+	return $form;
+}
+
+function moody_edit_form_submit($form, &$form_state) {
+	drupal_set_message('Front page settings have been saved.');
+	$value = (int)$form_state['values']['mood_front_items'];
+	$view_setting = db_fetch_object(db_query("SELECT vd.display_options FROM {views_display} vd WHERE vd.vid = 6 AND vd.id = 'page_1'"));
+	$settings = unserialize($view_setting->display_options);
+	$settings['items_per_page'] = $value;
+	if(is_array($settings['fields']['field_cover_image_fid'])) {
+		switch($value) {
+			case 1:
+				$settings['fields']['field_cover_image_fid']['format'] = 'front_linked';
+				break;
+			case 2:
+				$settings['fields']['field_cover_image_fid']['format'] = 'front_two_linked';
+				break;
+			case 3:
+				$settings['fields']['field_cover_image_fid']['format'] = 'front_three_linked';
+				break;	
+		}
+	}
+	db_query("UPDATE {views_display} vd SET vd.display_options = '%s' WHERE vd.vid = 6 AND vd.id = 'page_1'", serialize($settings));
+}
+
+function moody_get_front_value() {
+	$view_setting = db_fetch_object(db_query("SELECT vd.display_options FROM {views_display} vd WHERE vd.vid = 6 AND vd.id = 'page_1'"));
+	$settings = unserialize($view_setting->display_options);
+	return $settings['items_per_page'];
+}

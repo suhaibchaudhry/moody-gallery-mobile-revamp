@@ -1,0 +1,84 @@
+<?php
+function da_simplescroller_theme($existing, $type, $theme, $path) {
+	return	array('jslider' => array('arguments' => array('nodes' => array(), 'preset' => NULL, 'delta' => NULL), 'function' => 'theme_slider_display')); 
+}
+
+function da_simplescroller_block($op = 'list', $delta = 0, $edit = array()) {
+	switch($op) {
+		case 'list':
+			$blocks[0] = array(
+				'info' => 'Image Simple Scroller',
+				'cache' => BLOCK_NO_CACHE
+			);
+			return $blocks;
+		case 'configure':
+			$form['node_type'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Content Type'),
+				'#description' => 'Machine name for the content type, whose front page items will scroll',
+      			'#default_value' => variable_get('da_simplescroller_content_type-'.$delta, 'page'),
+    		);
+			$form['img_field_name'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('ImageCache Field Name'),
+				'#description' => 'Machine name of the CCK image field present in the content type',
+      			'#default_value' => variable_get('da_simplescroller_img_field_name-'.$delta, ''),
+    		);
+			$form['display_limit'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Display Limit'),
+				'#description' => 'The number of items to display in the scroller block',
+      			'#default_value' => variable_get('da_simplescroller_display_limit-'.$delta, ''),
+    		);
+			$form['imgcache_preset'] = array(
+      			'#type' => 'select',
+      			'#title' => t('ImageCache Preset'),
+				'#description' => 'ImageCache preset name for the resized images. Make sure the css elements in theme according to these sizes',
+      			'#default_value' => variable_get('da_simplescroller_preset-'.$delta, ''),
+				'#options' => _da_simplescroller_get_presets()
+    		);
+    		return $form;
+		case 'save':
+			variable_set('da_simplescroller_content_type-'.$delta, $edit['node_type']);
+			variable_set('da_simplescroller_img_field_name-'.$delta, $edit['img_field_name']);
+			variable_set('da_simplescroller_display_limit-'.$delta, $edit['display_limit']);
+			variable_set('da_simplescroller_preset-'.$delta, $edit['imgcache_preset']);
+			break;
+		case 'view':
+			drupal_add_css(drupal_get_path('module', 'da_simplescroller').'/css/style-da_simplescroller.css');
+			drupal_add_js(drupal_get_path('module', 'da_simplescroller').'/js/simplyscroll-1.0.4.js');
+			drupal_add_js(drupal_get_path('module', 'da_simplescroller').'/js/trigger.js');
+			
+			$content_type = variable_get('da_simplescroller_content_type-'.$delta, '');
+			$img_field_name = variable_get('da_simplescroller_img_field_name-'.$delta, '');
+			$preset = imagecache_preset(variable_get('da_simplescroller_preset-'.$delta, ''));
+			$preset = $preset['presetname'];
+			$nodes = array();
+			
+			$items = db_query_range("SELECT nid FROM {node} WHERE type = '%s' AND promote = 1 ORDER BY nid DESC", $content_type, 0, variable_get('da_simplescroller_display_limit-'.$delta, ''));
+			while($item = db_fetch_object($items)) {
+				$node = node_load($item->nid);
+				$images = $node->$img_field_name;
+				$nodes[$item->nid] = $images[0];
+			}
+
+			return array('subject' => '<none>', 'content' => theme('jslider', $nodes, $preset, $delta));
+	}
+}
+
+function theme_slider_display($nodes = array(), $preset = '', $delta = 0) {
+	$content = '<ul class="scroll">';
+	foreach($nodes as $nid => $image) {
+		$content .= '<li>'.l(theme('imagecache', $preset, $image['filepath'], $image["data"]["alt"], $image["data"]["title"]), 'node/'.$nid, array('html' => TRUE)).'</li>';
+	}
+	$content .= '</ul>';
+	return $content;
+}
+
+function _da_simplescroller_get_presets() {
+	$presets = array();
+	foreach(imagecache_presets() as $preset_id => $preset_info) {
+		$presets[$preset_id] = $preset_info['presetname'];
+	}
+	return $presets;
+}

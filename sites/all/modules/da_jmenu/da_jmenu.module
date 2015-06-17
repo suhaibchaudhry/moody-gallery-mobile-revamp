@@ -1,0 +1,125 @@
+<?php
+function da_jmenu_form_alter(&$form, &$form_state, $form_id) {
+	if($form_id == 'menu_edit_item') {
+		if(empty($form['menu']['mlid']['#value'])) {
+			_da_jmenu_menu_edit_form(TRUE, $form);
+		} else {
+			_da_jmenu_menu_edit_form(FALSE, $form);
+		}
+	}
+}
+
+function _da_jmenu_menu_type_submit(&$form, &$form_state) {
+	variable_set('da_jmenu_menu_rows_'.$form['menu']['mlid']['#value'], $form['da_menu_children_set']['num_rows']['#value']);
+	variable_set('da_jmenu_menu_type_'.$form['menu']['mlid']['#value'], $form['da_menu_children_set']['link_type']['#value']);
+}
+
+function _da_jmenu_menu_edit_form($disabled, &$form) {
+	$type = variable_get('da_jmenu_menu_type_'.$form['menu']['mlid']['#value'], '0');
+	$num_rows = variable_get('da_jmenu_menu_rows_'.$form['menu']['mlid']['#value'], '0');
+			
+	$form['#submit'][] = '_da_jmenu_menu_type_submit';
+
+	$form['da_menu_children_set'] = array(
+		'#type' => 'fieldset',
+		'#title' => 'Children Display Properties',
+		'#collapsible' => TRUE,
+		'#weight' => -1
+	);
+
+	$form['da_menu_children_set']['link_type'] = array(
+		'#type' => 'select',
+		'#title' => t('Link Type'),
+		'#default_value' => $type,
+		'#options' => array(
+			'0' => t('Un-collapsed'),
+   			'1' => t('Collapsed')
+  		),
+		'#disabled' => $disabled,
+  		'#description' => t('Select how you want this link to appear in special DA blocks.')
+	);
+			
+	$form['da_menu_children_set']['num_rows'] = array(
+		'#type' => 'select',
+		'#title' => t('Number of columns'),
+		'#default_value' => $num_rows,
+  		'#options' => array(
+    		'0' => t('1'),
+    		'1' => t('2')
+  		),
+		'#disabled' => $disabled,
+  		'#description' => t('How many number of columns do you want the children of this menu item to be displayed with. For use with da_jmenu module.')
+	);
+}
+
+function da_jmenu_block($op = 'list', $delta = 0, $edit = array()) {
+	switch($op) {
+		case 'list':
+			$blocks[0] = array(
+				'info' => 'Product Navigation Menu',
+				'cache' => BLOCK_NO_CACHE
+			);
+			$blocks[1] = array(
+				'info' => 'Wholesale Navigation Menu',
+				'cache' => BLOCK_NO_CACHE
+			);
+			return $blocks;
+		case 'configure':
+			$form['menu_id'] = array(
+      			'#type' => 'textfield',
+      			'#title' => ('Menu to bind with'),
+      			'#default_value' => variable_get('da_jmenu_bindm_'.$delta, ''),
+    		);
+    		return $form;
+		case 'save':
+			variable_set('da_jmenu_bindm_'.$delta, $edit['menu_id']);
+		case 'view':
+			drupal_add_css(drupal_get_path('module', 'da_jmenu').'/css/da_jmenu.css');
+			drupal_add_js(drupal_get_path('module', 'da_jmenu').'/js/da_jmenu.js');
+		
+			$content = '';
+			$menu_id = variable_get('da_jmenu_bindm_'.$delta, '');
+			if(empty($menu_id)) {
+				return array('subject' => '<none>', 'content' => '');
+			} else {
+				$menu_tree = menu_tree_page_data($menu_id);
+				$content .= '<div id="da_jmenu-cont">';
+				
+				foreach($menu_tree as $menu_item) {
+					if($menu_item['link']['hidden'] == 0) {
+						$type = variable_get('da_jmenu_menu_type_'.$menu_item['link']['mlid'], '0');
+						$num_rows = variable_get('da_jmenu_menu_rows_'.$menu_item['link']['mlid'], '0');
+						$class = ($num_rows == '0') ? '' : 'two-col';
+					
+						if($menu_item['below'] === FALSE) {
+							//Plain Link
+							$content .= '<h2>'.l($menu_item['link']['title'], $menu_item['link']['href']).'</h2>';
+							//dvm($content);
+						} else if($type == '0') {
+							//Uncollapsed
+							$content .= '<h2>'.$menu_item['link']['title'].'</h2>';
+							$content .= _da_jmenu_render_children($menu_item['below'], $class);
+						} else {
+							//Collapsed
+							$content .= '<h2 class="collapser">'.$menu_item['link']['title'].'</h2>';
+							$content .= _da_jmenu_render_children($menu_item['below'], 'ced '.$class);
+						}
+					}
+				}
+				$content .= '</div>';
+				return array('subject' => '<none>', 'content' => $content);
+			}
+	}
+}
+
+function _da_jmenu_render_children($children, $classes) {
+	$content = '<ul class = "'.$classes.'">';
+	foreach($children as $menu_item) {
+		if($menu_item['link']['hidden'] == 0) {
+			$content .= '<li>'.l($menu_item['link']['title'], $menu_item['link']['href']).'</li>';
+		}
+	}
+	$content .= '</ul>';
+	
+	return $content;
+}

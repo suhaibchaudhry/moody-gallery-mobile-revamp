@@ -1,0 +1,5 @@
+name = DA JS Updater
+description = Performs latest JQuery update to non-backend pages. NOTE: Relies on a hacked version of Jquery_Update.
+package = D.A. UI
+dependencies[] = jquery_update
+core = 6.x

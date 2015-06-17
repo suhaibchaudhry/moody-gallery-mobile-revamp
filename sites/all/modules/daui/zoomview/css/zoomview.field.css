@@ -1,0 +1,14 @@
+.field-field-image-cache {
+	float: left;
+	width: 350px;
+	margin: 0 10px 0 0;
+}
+
+.field-field-image-cache .field-item {
+	float: left;
+	margin: 0 12px 20px 0;
+}
+
+.field-field-image-cache .bigthumb, .field-field-image-cache .lastthumb {
+	margin-right: 0;
+}

@@ -1,0 +1,51 @@
+<?php
+function crm_endicia_sync_schema() {
+	$schema = array();
+	$schema['crm_endicia_postback'] = array(
+		'description' => 'Stores post back responses from endicia shipping system.',
+		'primary key' => array('postback_id'),
+		'fields' => array(
+			'postback_id' => array(
+				'description' => 'Primary key: Post Back ID.', 
+				'type' => 'serial',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+			),
+			'order_id' => array(
+				'description' => 'The order id of the order shipped.', 
+				'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE,
+			),
+			'tracking_number' => array(
+				'description' => 'Tracking Number',
+				'type' => 'varchar',
+				'length' => 255,
+				'not null' => TRUE
+			),
+			'transaction_id' => array(
+				'description' => 'Transaction Number',
+				'type' => 'varchar',
+				'length' => 255,
+				'not null' => TRUE
+			),
+			'synced' => array(
+				'description' => 'Sync flag',
+				'type' => 'int',
+				'size' => 'tiny',
+				'default' => 0,
+				'not null' => TRUE
+			)
+		)
+	);
+
+	return $schema;
+}
+
+function crm_endicia_sync_install() {
+	drupal_install_schema('crm_endicia_sync');
+}
+
+function crm_endicia_sync_uninstall() {
+	drupal_uninstall_schema('crm_endicia_sync');
+}

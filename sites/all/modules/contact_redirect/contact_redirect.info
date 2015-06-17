@@ -1,0 +1,14 @@
+; $Id: contact_redirect.info,v 1.3 2009/03/26 18:30:42 textplease Exp $
+name = Contact Redirect
+description = "Adds the ability to redirect users to another page after submitting site-wide contact forms."
+core = 6.x
+package = Other
+dependencies[] = contact
+
+
+; Information added by drupal.org packaging script on 2009-03-26
+version = "6.x-1.0-beta1"
+core = "6.x"
+project = "contact_redirect"
+datestamp = "1238093431"
+

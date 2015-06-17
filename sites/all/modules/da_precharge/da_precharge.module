@@ -1,0 +1,405 @@
+<?php
+/*
+Todo:
+- Delete stored encryption after recieving a valid response, not on errors.
+- Change button label to 'Try again' on error responses.
+- Refactor due functions to themeing functions.
+- Move merchant id, security keys, and key path to a admin settings page.
+*/
+function da_precharge_order($op, &$arg1, $arg2) {
+	$cc_number = $arg1->payment_details["cc_number"];
+	
+	if($op == "total" && strlen($cc_number) > 4) {
+		_da_precharge_save_ccdata($arg1->order_id, _da_precharge_encrypt($cc_number));
+	}
+}
+
+function _da_precharge_remove_non_numeric($string) {
+	return preg_replace('/[^0-9]/', '', $string);
+}
+
+function _da_precharge_save_ccdata($order_id, $cc_data) {
+	$sql = "INSERT INTO {precharge_cc} VALUES (%d, '%s', '%s') ON DUPLICATE KEY UPDATE cc_data = '%s';";
+	db_query($sql, $order_id, $cc_data, ip_address(), $cc_data);
+}
+
+function _da_precharge_save_response($order_id, $response_code, $score, $transaction_id, $error_code) {
+	$sql = "INSERT INTO {precharge_response} VALUES (%d, %d, %d, '%s', %d) ON DUPLICATE KEY UPDATE response_code = %d, score = %d, transaction_id = '%s', error_code = %d;";
+	db_query($sql, $order_id, $response_code, $score, $transaction_id, $error_code, $response_code, $score, $transaction_id, $error_code);
+}
+
+function _da_precharge_update_response_code($order_id, $response_code) {
+	$sql = "UPDATE {precharge_response} SET response_code = %d WHERE order_id = %d;";
+	db_query($sql, $response_code, $order_id);
+}
+
+function _da_precharge_load_response($order_id) {
+	$sql = "SELECT * FROM {precharge_response} WHERE order_id = %d;";
+	$result = db_query($sql, $order_id);
+	return db_fetch_object($result);
+}
+
+function _da_precharge_load_ccdata($order_id) {
+	$sql = "SELECT cc_data FROM {precharge_cc} WHERE order_id = %d;";
+	$result = db_query($sql, $order_id);
+	$precharge_cc = db_fetch_object($result);
+	return $precharge_cc->cc_data;
+}
+
+function _da_precharge_flush_ccdata($order_id) {
+	$sql = "DELETE FROM {precharge_cc} WHERE order_id = %d;";
+	db_query($sql, $order_id);	
+}
+
+function _da_precharge_load_ip_address($order_id) {
+	$sql = "SELECT ip_address FROM {precharge_cc} WHERE order_id = %d;";
+	$result = db_query($sql, $order_id);
+	$precharge_cc = db_fetch_object($result);
+	return $precharge_cc->ip_address;
+}
+
+function _da_precharge_encrypt($data) {
+	// AES Government Grade Encryption.
+
+	// The first thing to understand is the meaning of these constants:
+	// MCRYPT_RIJNDAEL_128
+	// MCRYPT_RIJNDAEL_192
+	// MCRYPT_RIJNDAEL_256
+
+	// You would think that MCRYPT_RIJNDAEL_256 specifies 256-bit encryption,
+	// but that is wrong.  The three choices specify the block-size to be used
+	// with Rijndael encryption.  They say nothing about the key size (i.e. strength)
+	// of the encryption.  (Read further to understand how the strength of the
+	// AES encryption is set.)
+	//
+	// The Rijndael encyrption algorithm is a block cipher.  It operates on discrete 
+	// blocks of data.  Padding MUST be added such that
+	// the data to be encrypted has a length that is a multiple of the block size.
+	// (PHP pads with NULL bytes)
+	// Thus, if you specify MCRYPT_RIJNDAEL_256, your encrypted output will always
+	// be a multiple of 32 bytes (i.e. 256 bits).  If you specify MCRYPT_RIJNDAEL_128,
+	// your encrypted output will always be a multiple of 16 bytes.
+	//
+	// Note: Strictly speaking, AES is not precisely Rijndael (although in practice 
+	// they are used interchangeably) as Rijndael supports a larger range of block 
+	// and key sizes; AES has a fixed block size of 128 bits and a key size of 
+	// 128, 192, or 256 bits, whereas Rijndael can be specified with key and block 
+	// sizes in any multiple of 32 bits, with a minimum of 128 bits and a maximum of 
+	// 256 bits.
+	// In summary: If you want to be AES compliant, always choose MCRYPT_RIJNDAEL_128.
+	//
+	// So the first step is to create the cipher object:
+	$cipher = mcrypt_module_open(MCRYPT_RIJNDAEL_128, '', MCRYPT_MODE_CBC, '');
+
+	// We're using CBC mode (cipher-block chaining).  Block cipher modes are detailed
+	// here: http://en.wikipedia.org/wiki/Block_cipher_modes_of_operation
+		
+	// CBC mode requires an initialization vector.  The size of the IV (initialization
+	// vector) is always equal to the block-size.  (It is NOT equal to the key size.)
+	// Given that our block size is 128-bits, the IV is also 128-bits (i.e. 16 bytes).
+	// Thus, for AES encryption, the IV is always 16 bytes regardless of the 
+	// strength of encryption.
+	// 
+	// Here's some PHP code to verify our IV size:
+	//$iv_size = mcrypt_enc_get_iv_size($cipher);
+	
+	// How do you do 256-bit AES encryption in PHP vs. 128-bit AES encryption???
+	// The answer is:  Give it a key that's 32 bytes long as opposed to 16 bytes long.
+	// Change this to a ubercart like file mechanism.
+	$key256 = 'wgWGasaD79WGDAdaxyz78627XYxYpQRz'; //32 bytes or 32 ASCII Chars
+	
+	// Here's our 128-bit IV which is used for both 256-bit and 128-bit keys.
+	$iv =  'dAwGnpattxy23476';
+	
+	// The mcrypt_generic_init function initializes the cipher by specifying both
+	// the key and the IV.  The length of the key determines whether we're doing
+	// 128-bit, 192-bit, or 256-bit encryption.  
+	// Let's do 256-bit encryption here:
+	if (mcrypt_generic_init($cipher, $key256, $iv) != -1) {
+		// PHP pads with NULL bytes if $cleartext is not a multiple of the block size..
+		$cipherText = mcrypt_generic($cipher, $data);
+		mcrypt_generic_deinit($cipher);
+
+		// Display the result in hex.
+		mcrypt_module_close($cipher);
+		return base64_encode($cipherText);
+	} else {
+		mcrypt_module_close($cipher);
+		return 'Error';
+	}
+}
+
+function _da_precharge_decrypt($data) {
+	$data = base64_decode($data);
+	$key256 = 'wgWGasaD79WGDAdaxyz78627XYxYpQRz';
+	$iv =  'dAwGnpattxy23476';
+	
+	return _da_precharge_remove_non_numeric(mcrypt_decrypt(MCRYPT_RIJNDAEL_128, $key256, $data, MCRYPT_MODE_CBC, $iv));
+}
+
+function da_precharge_forms($form_id, $args) {
+	$forms['da_precharge_form'] = array(
+		'callback' => '_da_precharge_form_construct',
+	);
+
+	return $forms;
+}
+
+function da_precharge_order_pane() {
+	$panes = array();
+	$panes[] = array(
+		'id' => 'precharge_pane',
+		'callback' => '_da_precharge_construct',
+		'title' => t('PreCharge Fraud Check'),
+		'desc' => t('Check suspicious orders for fraud using the PreCharge system.'),
+		'class' => 'abs-left',
+		'weight' => 9,
+		'show' => array('view')
+	);
+
+	return $panes;
+}
+
+function _da_precharge_construct($op, $arg1) {
+	if($op == 'view') {
+		return drupal_get_form('_da_precharge_form_construct', $arg1);
+	} else {
+		return '';	
+	}
+}
+
+function _da_precharge_get_score_color($score) {
+	if($score <= 250) {
+		return '0C0';
+	} else if($score <= 500) {
+		return '0C9';
+	} else if($score <= 750) {
+		return 'C93003';
+	} else if($score <= 1000) {
+		return 'F00';
+	}
+}
+
+function _da_precharge_generate_status_table($status, $status_color_hex, $score, $transaction_id) {
+	//Refactor into a drupal theme function.
+	$content = '<table id="precharge_response" cellpadding="5">';
+	$content .= '<tr><td><strong>Status:</strong></td><td><span style="color: #'.$status_color_hex.';">'.$status.'</span></td></tr>';
+	$content .= '<tr><td><strong>Fraud Score:</strong></td><td><span style="color: #'._da_precharge_get_score_color($score).';">'.$score.'</span> / 1000</td></tr>';
+	$content .= '<tr><td><strong>Transaction ID:</strong></td><td><a href="#" onclick="window.open(\'https://secure.precharge.net/bin/members?command=view&action=viewtransaction&id='.$transaction_id.'\',\'PreCharge Transaction\',\'menubar=0,width=800,height=600,toolbar=0,scrollbars=1\'); return false;">'.$transaction_id.'</a></td></tr>';
+	$content .= '</table>';
+
+	return $content;
+}
+
+function _da_precharge_generate_error_table($error_code) {
+	//Refactor into a drupal theme function.
+	$content = '<table id="precharge_response" cellpadding="5">';
+	$content .= '<tr><td><strong>Status:</strong></td><td><span style="color: #F00;">Error</span></td></tr>';
+	$content .= '<tr><td><strong>Details:</strong></td><td>'._da_precharge_error_details($error_code).'</td></tr>';
+	$content .= '</table>';
+	
+	return $content;
+}
+
+function _da_precharge_error_details($error_code) {
+	switch($error_code) {
+		case 101:
+			return 'Invalid request method was used';
+		case 102:
+			return 'Invalid request URL was used';
+		case 103:
+			return 'Security codes do not match account verification';
+		case 104:
+			return 'Merchant status could be not verified';
+		case 105:
+			return 'Merchant feed has been disabled by the merchant';
+		case 106:
+			return 'Invalid request type was used';
+		case 107:
+			return 'IP Address was not submitted';
+		case 108:
+			return 'IP Address syntax was invalid. IPv6 is not supported';
+		case 109:
+			return 'First name was not submitted';
+		case 110:
+			return 'First name submitted was invalid';
+		case 111:
+			return 'Last name was not submitted';
+		case 112:
+			return 'Last name submitted was invalid';
+		case 113:
+			return 'Address submitted was invalid';
+		case 114:
+			return 'Address line 2 submitted is invalid';
+		case 115:
+			return 'City submitted was invalid';
+		case 116:
+			return 'State submitted was invalid';
+		case 117:
+			return 'Country submitted was invalid';
+		case 118:
+			return 'Postal code was not submitted';
+		case 119:
+			return 'Postal code submitted was invalid';
+		case 120:
+			return 'Phone number was not submitted';
+		case 121:
+			return 'Phone number submitted was invalid';
+		case 122:
+			return 'Credit Card expiration month not submitted';
+		case 123:
+			return 'Expiration month submitted was invalid';
+		case 124:
+			return 'Expiration year was not submitted';
+		case 125:
+			return 'Expiration year submitted was invalid';
+		case 126:
+			return 'Provided Credit Card has expired';
+		case 127:
+			return 'Credit Card Number not submitted';
+		case 128:
+			return 'Credit Card Number submitted was invalid';
+		case 129:
+			return 'Email Address was not submitted';
+		default:
+			return 'Precharge didn\'t respond properly, try again later, if the problem presists contact preCharge support.';
+	}
+}
+
+function _da_precharge_update_status($order_id, $transaction_id) {
+	$data = array(
+		'merchant_id' => '1266879560062330',
+		'security_1' => 'Y6ci7D6EtJ',
+		'security_2' => 'FAdhtNCmrR',
+		'type' => '0',
+		'transaction_id' => $transaction_id
+	);
+	
+	$response = drupal_http_request("https://api.precharge.net/status", array('Content-Type' => 'application/x-www-form-urlencoded'), 'POST', http_build_query($data, '', '&'));
+	
+	$xml = $response->data;
+	$results = simplexml_load_string($xml);
+	$new_status = $results->Transaction->Status;
+
+	if($new_status == "Approved") {
+		_da_precharge_update_response_code($order_id, 1);
+		return 1;
+	} else if($new_status == "Declined") {
+		_da_precharge_update_response_code($order_id, 2);
+		return 2;
+	} else {
+		return 0;
+	}
+}
+
+function _da_precharge_form_construct($form_state, $order) {
+	$form = array();
+	$cc_data = _da_precharge_load_ccdata($order->order_id);
+	$response = _da_precharge_load_response($order->order_id);
+	$show_button = TRUE;
+
+	if(!empty($response)) {
+		switch($response->response_code) {
+			case 1:
+				_da_precharge_flush_ccdata($order->order_id);
+				$form['#prefix'] = _da_precharge_generate_status_table('Approved', '0C0', $response->score, $response->transaction_id);
+				$show_button = FALSE;
+				break;
+			case 2:
+				_da_precharge_flush_ccdata($order->order_id);
+				$form['#prefix'] = _da_precharge_generate_status_table('Declined', 'F00', $response->score, $response->transaction_id);
+				$show_button = FALSE;
+				break;
+			case 3:
+				$form['#prefix'] = _da_precharge_generate_error_table($response->error_code);
+				break;
+			case 9:
+				_da_precharge_flush_ccdata($order->order_id);
+				if($new_status = _da_precharge_update_status($order->order_id, $response->transaction_id)) {
+					if($new_status == 1) {
+						$form['#prefix'] = _da_precharge_generate_status_table('Approved', '0C0', $response->score, $response->transaction_id);
+					} else {
+						$form['#prefix'] = _da_precharge_generate_status_table('Declined', 'F00', $response->score, $response->transaction_id);
+					}
+				} else {
+					$form['#prefix'] = _da_precharge_generate_status_table('Pending Review', 'C93003', $response->score, $response->transaction_id);
+				}
+				$show_button = FALSE;
+				break;
+			default:
+				$form['#prefix'] = _da_precharge_generate_error_table(0);
+		}
+	}else if(empty($cc_data)) {
+		$form['#prefix'] = '<div>This order is not compatible with preCharge.</div>';
+		$show_button = FALSE;
+	}
+	
+	if($show_button) {
+		$form['submit'] = array(
+			'#type' => 'submit',
+			'#value' => 'Screen Order with PreCharge',
+			'#submit' => array('_da_precharge_screen')
+		);
+		$form['#order'] = $order;
+	}
+	
+	return $form;
+}
+
+function _da_precharge_screen(&$form, &$form_state) {
+	$order = $form['#order'];
+
+	$data = array(
+		'type' => 'xml',
+		
+		//Live Account
+		'merchant_id' => '1266879560062330',
+		'security_1' => 'Y6ci7D6EtJ',
+		'security_2' => 'FAdhtNCmrR',
+
+		//Test Account
+		//'merchant_id' => '1296756084122867',
+		//'security_1' => '0EA71HRqMc',
+		//'security_2' => 'FAdhtNCmrR',
+		
+		'ecom_billto_postal_name_first' => $order->billing_first_name,
+		'ecom_billto_postal_name_last' => $order->billing_last_name,
+		'ecom_billto_postal_street_line1' => $order->billing_street1,
+		'ecom_billto_postal_street_line2' => $order->billing_street2,
+		'ecom_billto_postal_city' => $order->billing_city,
+		'ecom_billto_postal_stateprov' => uc_zone_get_by_id($order->billing_zone),
+		'ecom_billto_postal_postalcode' => $order->billing_postal_code,
+		'ecom_billto_postal_countrycode' => uc_country_get_by_id($order->billing_country),
+		'ecom_billto_telecom_phone_number' => $order->billing_phone,
+		'ecom_billto_online_email' => $order->primary_email,
+		'ecom_billto_online_ip' => _da_precharge_load_ip_address($order->order_id),
+
+		'ecom_transaction_amount' => $order->order_total,
+		'ecom_payment_card_number' => _da_precharge_decrypt(_da_precharge_load_ccdata($order->order_id)),
+		'ecom_payment_card_expdate_month' => $order->payment_details["cc_exp_month"],
+		'ecom_payment_card_expdate_year' => $order->payment_details["cc_exp_year"],
+
+		'billto_shipto_match' => '1',
+		'shipto_postal_name_first' => $order->delivery_first_name,
+		'shipto_postal_name_last' => $order->delivery_last_name,
+		'shipto_postal_street_line1' => $order->delivery_street1,
+		'shipto_postal_street_line2' => $order->delivery_street2,
+		'shipto_postal_city' => $order->delivery_city,
+		'shipto_postal_stateprov' => uc_zone_get_by_id($order->delivery_zone),
+		'shipto_postal_postalcode' => $order->delivery_postal_code,
+		'shipto_postal_countrycode' => uc_country_get_by_id($order->delivery_country),
+		'shipto_phone_number' => $order->shipto_phone_number,
+
+		'currency' => 'USD', //use ubercart currencies later on
+		'invoice_number' => $order->order_id,
+		'client_id' => $order->uid,
+		'ecom_billto_company_name' => $order->billing_company,
+		'shipto_company_name' => $order->delivery_company
+	);
+	
+	$response = drupal_http_request("https://api.precharge.net/charge", array('Content-Type' => 'application/x-www-form-urlencoded'), 'POST', http_build_query($data, '', '&'));
+	
+	$xml = $response->data;
+	$results = simplexml_load_string($xml);
+	_da_precharge_save_response($order->order_id, $results->response, $results->score, $results->transaction, $results->error);
+}

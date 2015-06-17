@@ -1,0 +1,4 @@
+name = Form Element Uncollapser
+description = Sets some collapsed form elements in the node creation form to be uncollapsed and required by default. For example the element URL Alias, should be required and uncollapsable in this sites context. Also collapses some unnecessary ubercart fields, and filling in logical defaults.
+package = D.A. Custom Modules
+core = 6.x

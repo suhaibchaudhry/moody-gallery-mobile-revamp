@@ -1,0 +1,16 @@
+<?php
+function da_reverse_reference_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+	if($op == "load") {
+		$attributes = array();
+		foreach(content_fields() as $field) {
+			if(isset($field["referenceable_types"]) && $field["referenceable_types"][$node->type] === $node->type) {
+				$sql = "SELECT nid FROM {content_".$field["field_name"]."} WHERE ".$field["field_name"]."_nid = %d";
+				$parents = db_query($sql, $node->nid);
+				while($parent = db_fetch_object($parents)) {
+					$attributes["field_parent_nodes"][$parent->nid] = node_load($parent->nid);
+				}
+			}
+		}
+		return $attributes;
+	}
+}

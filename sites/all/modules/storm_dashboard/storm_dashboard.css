@@ -1,0 +1,218 @@
+#sdb{
+  width:800px;
+}
+#sdb #sdb-org{
+  background-color:#ffdddd;
+}
+#sdb #sdb-org #sdb-org-icons{
+  display:inline;
+}
+#sdb #sdb-prj{
+  background-color:#ddffdd;
+}
+#sdb #sdb-tsk{
+  background-color:#ddddff;
+}
+#sdb #sdb-tkt{
+  background-color:#dddddd;
+}
+#sdb select{
+  width:100%;
+}
+#sdb .form-item{
+  margin-top:0;
+  margin-bottom:0;
+}
+#sdb .third{
+  float:left;
+  width:260px;
+  margin-left:10px;
+}
+#sdb .third.first{
+  margin-left:0;
+}
+#sdb .left.wide{
+  width:260px;
+}
+#sdb .main{
+  width:auto;
+}
+#sdb .main dt{
+  display:inline;
+}
+#sdb .main form{
+  width:320px;
+  display:inline-block;
+  margin:10px;
+}
+#sdb .left{
+  float:left;
+  width:150px;
+  margin-right:10px;
+}
+#sdb .right{
+  float:right;
+  width:190px;
+}
+#sdb .center{
+  overflow:auto;
+  max-height:190px;
+}
+#sdb #sdb-note .center,
+#sdb #sdb-tt .center{
+  max-height:none;
+}
+#sdb #sdb-org .center{
+  max-height:150px;
+}
+#sdb #sdb-org-people-detail{
+  overflow:auto;
+  max-height:55px;
+}
+#sdb #sdb-org-people-detail .stormfields{
+  max-width:500px;
+}
+#sdb #sdb-org-people-detail .stormfields div div{
+  float:none;
+  white-space:nowrap;
+  display:inline;
+}
+#sdb #sdb-org-people-detail .stormfields .label{
+  width:50px;
+  font-size:9px;
+}
+#sdb .stormcomponent{
+  clear:none;
+}
+#sdb .stormcomponent #fields{
+  float:none;
+  width:auto;
+}
+#sdb ul,
+#sdb quote,
+#sdb code,
+#sdb fieldset{
+  margin-top:0 !important;
+  margin-bottom:0 !important;
+  margin-left:0 !important;
+  margin-right:0 !important;
+}
+#sdb fieldset dt.stormcomponent{
+  height:20px;
+  display:inline-block;
+}
+.storm-dashboard-unselect:hover{
+  cursor:pointer;
+}
+#sdb-loading{
+  position:fixed;
+  left:250px;
+  bottom:200px;
+  z-index:999;
+  background:#ffdddd url(wait.gif) center top no-repeat;
+  border:1px solid #818181;
+  width:300px;
+  text-align:center;
+  padding:33px 5px 10px 5px;
+  font-size:12px;
+  display:none;
+  font-family:Verdana, Arial, Helvetica, sans-serif;
+}
+#sdb-timetracking{
+  position:fixed;
+  left:0;
+  bottom:0;
+  z-index:999;
+  text-align:center;
+  background-color:#ffdddd;
+  padding:5px 5px 5px 5px;
+  font-size:12px;
+  font-family:Verdana, Arial, Helvetica, sans-serif;
+}
+#sdb-timetracking.sdb-light-visible {
+  background-color:#ddffdd;
+}
+#sdb-timetracking .icon{
+  background: transparent url(up.gif) no-repeat scroll 0 0;
+  height: 14px;
+  width: 20px;
+  display: inline-block;
+}
+#sdb-timetracking.sdb-light-visible .icon{
+  background: transparent url(up.gif) no-repeat scroll 0 -48px;
+}
+#sdb-timetracking .icon:hover{
+  cursor:pointer;
+}
+#sdb-timetracking .content,
+#sdb-timetracking .note div,
+#sdb-timetracking .time div {
+  display: inline-block;
+}
+#sdb-timetracking span img{
+  margin-left:20px;
+}
+.sdb-timetracking-trigger img{
+  width:16px;
+  height:16px;
+}
+.sdb-timetracking-trigger img:hover{
+  cursor:pointer;
+}
+.timetracking-active{
+  text-decoration:blink;
+  font-size:25px;
+}
+.timetracking-active:before{
+  content:'(';
+}
+.timetracking-active:after{
+  content:')';
+}
+#sdb div.stormfields,
+#sdb div.field,
+#sdb div.stormbody {
+  width:100%;
+}
+.clear {
+  clear: both;
+}
+#sdb #center form {
+  margin-bottom: 2em !important;
+}
+#sdb #sdb-org .main #edit-select-wrapper,
+#sdb #sdb-org .main #edit-collapse-on-select-wrapper {
+  display: inline-block;
+}
+#sdb #edit-storm-dashboard-project-stati-wrapper,
+#sdb #edit-storm-dashboard-task-stati-wrapper,
+#sdb #edit-storm-dashboard-ticket-stati-wrapper,
+#sdb #edit-storm-dashboard-filter-submit {
+  display: inline-block;
+  padding: 3px;
+}
+#sdb-light{
+  display:none;
+  position:fixed;
+  left:100px;
+  top:100px;
+  z-index:1001;
+  background-color:#ffffff;
+  border-bottom:5px solid #ffffff;
+  width:830px;
+  height:430px;
+  padding:5px;
+}
+#sdb-light .border {
+  overflow:auto;
+  height:100%;
+  border:1px solid #000000;
+}
+#sdb-light #sdb {
+  margin-left: auto;
+  margin-right: auto;
+  padding:5px;
+}
+#sdb #sdb-filter select {
+  width:100%;
+}

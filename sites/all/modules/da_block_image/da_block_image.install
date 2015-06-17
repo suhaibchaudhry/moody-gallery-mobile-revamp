@@ -1,0 +1,32 @@
+<?php
+function da_block_image_schema() {
+	$schema = array();
+	$schema['block_images'] = array(
+		'description' => 'Store paths of uploaded images to blocks.',
+		'primary key' => array('module'),
+		'fields' => array(
+			'module' => array(
+				'description' => 'Name of the module that implements the block.',
+				'type' => 'varchar',
+				'length' => 50,
+				'not null' => FALSE
+			),
+			'image_path' => array(
+				'description' => 'Uploaded image path.',
+				'type' => 'varchar',
+				'length' => 100,
+				'non null' => TRUE
+			)
+		)
+	);
+	
+	return $schema;
+}
+
+function da_block_image_install() {
+  drupal_install_schema('da_block_image');
+}
+
+function da_block_image_uninstall() {
+  drupal_uninstall_schema('da_block_image');
+}

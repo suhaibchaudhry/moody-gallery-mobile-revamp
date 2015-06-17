@@ -1,0 +1,32 @@
+.order-stats h3 {
+	margin: 3px 0 10px;	
+}
+
+.order-stats {
+	background: #333;
+	padding: 10px;
+	border: 1px solid #BBB;
+	border-radius: 8px;
+	float: left;
+	width: 695px;
+	margin: 0 0 8px;
+}
+
+a.next-month {
+	float: right;	
+	margin: 5px 0 0;
+}
+a.prev-month {
+	float: left;
+	margin: 5px 0 0;
+}
+.loading-stats {
+	width: 32px;
+	height: 32px;
+	background: url(../images/ajax-loader.gif);
+	margin: 40px auto;
+}
+.stats-midnav a {
+	float: left;
+	margin: 5px 0 0 30px;	
+}

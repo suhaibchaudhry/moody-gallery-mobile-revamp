@@ -1,0 +1,126 @@
+#cart-table {
+	position: absolute;
+	width: 200px;
+	z-index: 9990;
+	width: 469px;
+}
+#tppane {
+	height: 33px;
+}
+#tppane p {
+	float: left;
+	margin:17px 0 0 165px;
+	padding: 0;
+}
+#tppane p span {
+	margin:0 0 0 24px;
+}
+#mdpane {
+	background: url(../images/midpane.gif) repeat-y;
+	display: none;
+	padding: 10px 10px 0;
+}
+#mdpane p{
+	padding: 0 0 10px;
+	margin: 0;
+}
+#btpane {
+	background: url(../images/btpane.png) no-repeat;
+	height: 18px;
+}
+#cart-bar {
+	height: 27px;
+	position: absolute;
+	left: -8px;
+	margin: 10px 0 0;
+	z-index: 9999;
+}
+.clickitey {
+	cursor: pointer;
+}
+.jcrtarrow {
+	background: url(../images/arrow.gif) no-repeat scroll;
+	width: 24px;
+	height: 27px;
+	float: left;
+}
+.arrow-open {
+	background-position: -24px 0px;
+}
+.lcurve {
+	background: url(../images/lcurve.gif) no-repeat;
+	width: 15px;
+	height: 27px;
+	float:left;
+}
+.smallchtkbtn {
+	left: 342px;
+	position: absolute;
+	top: 12px;
+}
+.smallchtkbtn a {
+	display: block;
+	width: 112px;
+	height: 26px;
+	background: url(../images/checkout_top.gif) no-repeat;
+	text-indent: -9999px;
+}
+.rcurve {
+	background: url(../images/rcurve.gif) no-repeat;
+	width: 14px;
+	height: 27px;
+	float:left;
+}
+.barcenter {
+	background: url(../images/midbar.gif) repeat-x;
+	width: 90px;
+	padding: 0 10px 0;
+	height: 27px;
+	float: left;
+}
+.barcenter p {
+	font-weight: bold;
+	text-transform: uppercase;
+	color: #FFFFFF;
+	margin: 0;
+	line-height:27px;
+	text-align:right;
+}
+table.jitems {
+	width: 449px;
+}
+tr.jitem {
+	height: 35px;
+}
+td.jtotal {
+	border-top: 1px solid;
+}
+.jodd {
+
+}
+.jeven {
+
+}
+.jcart-checkoutbtns {
+	margin:0 0 0 4px;
+	width:440px;
+}
+.jcart-lftbtn {
+	width: 224px;
+	float: left;	
+}
+.jcart-lftbtn a {
+	display: block;
+	width: 145px;
+	height: 43px;
+	background: url(../images/update_cart.gif) no-repeat;
+	text-indent: -9999px;
+}
+.jcart-rghtbtn a {
+	float: right;
+	display: block;
+	width: 	145px;
+	height: 43px;
+	text-index: -9999px;
+	background: url(../images/checkout_now.gif) no-repeat;
+}

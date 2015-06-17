@@ -1,0 +1,8 @@
+name = Cute Facets
+description = Creates blocks with good looking conditional facets from taxonomy views filters. Enable DA JS Updater for touch compatibility and robustness.
+package = D.A. UI
+dependencies[] = jquery_update
+dependencies[] = jquery_ui
+dependencies[] = views
+version = 1.0
+core = 6.x

@@ -1,0 +1,16 @@
+/*Order Retail*/
+.retail-price {
+	margin: 0 0 10px 10px;
+	font-size: 14pt;
+}
+
+.retail-price span {
+	color: #0F0;	
+}
+
+.retail-throbber {
+	width: 32px;
+	height: 32px;
+	background: url(../images/ajax-loader.gif) no-repeat;
+	display: none;
+}

@@ -1,0 +1,6 @@
+name = Endicia Sync
+description = Creates a table for endicia's post-back, and runs cron to integrates post-back to ubercart.
+package = D.A. CRM
+dependencies[] = uc_order
+dependencies[] = uc_shipping
+core = 6.x

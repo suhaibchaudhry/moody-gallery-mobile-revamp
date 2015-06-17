@@ -1,0 +1,116 @@
+<?php
+function da_slideshow_theme($existing, $type, $theme, $path) {
+	return	array('slideshow' => array('arguments' => array('images' => NULL, 'urls' => NULL, 'width' => NULL, 'height' => NULL, 'delta' => NULL), 'function' => 'theme_slideshow_display')); 
+}
+
+function da_slideshow_block($op = 'list', $delta = 0, $edit = array()) {
+	switch($op) {
+		case 'list':
+			$blocks[0] = array(
+				'info' => 'Image Slide Show',
+				'cache' => BLOCK_NO_CACHE
+			);
+			$blocks[1] = array(
+				'info' => 'Random Images Block',
+				'cache' => BLOCK_NO_CACHE
+			);
+			return $blocks;
+		case 'configure':
+			$form['node_id'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Node ID'),
+      			'#default_value' => variable_get('da_slideshow_node_id-'.$delta, 0),
+    		);
+			$form['img_field_name'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Slide Show Image Field Name'),
+      			'#default_value' => variable_get('da_slideshow_img_field_name-'.$delta, ''),
+    		);
+			$form['url_field_name'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('URL Field Name'),
+      			'#default_value' => variable_get('da_slideshow_url_field_name-'.$delta, '')
+    		);
+			$form['slideshow_width'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Slideshow Width'),
+				'#description' => 'Slideshow width in pixels.',
+      			'#default_value' => variable_get('da_slideshow_width-'.$delta, 0),
+    		);
+			$form['slideshow_height'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Slideshow Height'),
+				'#description' => 'Slideshow height in pixels.',
+      			'#default_value' => variable_get('da_slideshow_height-'.$delta, 0),
+    		);
+    		return $form;
+		case 'save':
+			variable_set('da_slideshow_node_id-'.$delta, $edit['node_id']);
+			variable_set('da_slideshow_img_field_name-'.$delta, $edit['img_field_name']);
+			variable_set('da_slideshow_url_field_name-'.$delta, $edit['url_field_name']);
+			variable_set('da_slideshow_width-'.$delta, $edit['slideshow_width']);
+			variable_set('da_slideshow_height-'.$delta, $edit['slideshow_height']);
+			break;
+		case 'view':
+			$node_id = variable_get('da_slideshow_node_id-'.$delta, '');
+			$img_field_name = variable_get('da_slideshow_img_field_name-'.$delta, '');
+			$url_field_name = variable_get('da_slideshow_url_field_name-'.$delta, '');
+			$width = variable_get('da_slideshow_width-'.$delta, 0);
+			$height = variable_get('da_slideshow_height-'.$delta, 0);
+			
+			
+			if(!empty($node_id) && !empty($img_field_name) && !empty($url_field_name)) {
+				$node = node_load($node_id);
+				$content = theme('slideshow', $node->$img_field_name, $node->$url_field_name, $width, $height, $delta);
+			} else {
+				$content = '';
+			}
+			
+			return array('subject' => '<none>', 'content' => $content);
+	}
+}
+
+function theme_slideshow_display($images, $urls, $width, $height, $delta) {
+	if($delta == 0) {
+		drupal_add_css(drupal_get_path('module','da_slideshow').'/css/slideshow.css');
+		drupal_add_js(drupal_get_path('module','da_slideshow').'/js/slide-js.js');
+		$style = '';
+		if($width && $height) {
+			$style = 'style = "width: '.$width.'px; height: '.$height.'px;"';
+		}
+		$content = '<ul class="slideshow" '.$style.'>';
+		$i = 0;
+		foreach($images as $image) {
+			$class = ($i == 0) ? ' class="show"' : '';
+	
+			if(array_key_exists($i, $urls)) {
+				$url_link = $urls[$i]["url"];
+				$url_title = $urls[$i]["title"];
+			} else {
+				$url_link = '#';
+				$url_title = '';
+			}
+		
+			$image_url = $image["filepath"];
+			$image_title = $image["data"]["title"];
+			$image_desc = $image["data"]["alt"];
+		
+			$content .= '<li'.$class.'><a href="'.check_plain($url_link).'" title="'.check_plain($url_title).'"><img src="'.base_path().check_plain($image_url).'" title="'.check_plain($image_title).'" alt="'.check_plain($image_desc).'"/></a></li>';
+			$i++;
+		}
+		$content .= '</ul>';
+		return $content;
+	} else {
+		drupal_add_css(drupal_get_path('module','da_slideshow').'/css/random.css');
+		
+		$index = rand(0, (count($images)-1));
+		
+		$image_url = $images[$index]["filepath"];
+		$image_title = $images[$index]["data"]["title"];
+		$image_desc = $images[$index]["data"]["alt"];
+		$url_link = $urls[$index]["url"];
+		$url_title = $urls[$index]["title"];
+		
+		return '<div class="random-specials"><a href="'.check_plain($url_link).'" title="'.check_plain($url_title).'"><img src="'.base_path().check_plain($image_url).'" title="'.check_plain($image_title).'" alt="'.check_plain($image_desc).'"/></a></div>';
+	}
+}

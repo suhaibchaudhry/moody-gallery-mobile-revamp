@@ -1,0 +1,237 @@
+<?php
+//User Credits Block
+function da_user_credits_block($op = 'list', $delta = 0, $edit = array()) {
+	if($op == 'list') {
+		$blocks[0] = array(
+			'info' => t('User Credits'),
+			'cache' => BLOCK_NO_CACHE
+    	);
+		
+		return $blocks;
+	} else if ($op == 'view') {
+		global $user;
+		if($user->uid) {
+			return array('subject' => t('Your Balance'), 'content' => da_user_credits_block_render($user->uid, $user->name));
+		}
+	}
+}
+
+function da_user_credits_block_render($uid, $name) {
+	$credits = da_user_credits_fetch($uid);
+	return '<p>Welcome '.$name.'</p>'.'<p>Credits: <span class="credit-amount">'.$credits.'</span></p>'.'<p>'.l('Add Credits', 'user/'.$uid.'/add-credit', array('attributes' => array('class' => 'add_credits_link'))).'</p>';
+}
+//Declare Module permissions
+function da_user_credits_perm() {
+  return array('administer user credits system', 'access credits paypal reports');
+}
+
+//Configure Menu Router
+function da_user_credits_menu() {
+	$urls = array();
+
+	$urls['user/%user/add-credit'] = array(
+		'title' => 'Add Credit',
+		'page callback' => 'da_user_credits_add',
+		'page arguments' => array(1),
+		'access callback' => 'user_edit_access',
+		'access arguments' => array(1),
+		'type' => MENU_LOCAL_TASK,
+		'file' => 'add_credits.inc'
+	);
+	
+	$urls['admin/settings/da_user_credits'] = array(
+		'title' => t('Configure User Credits System'),
+		'description' => t('Configure PayPal and other related settings to the user credits system.'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('da_user_credits_admin'),
+		'access arguments' => array('administer user credits system'),
+		'type' => MENU_NORMAL_ITEM,
+	);
+	$urls['admin/paypal-report'] = array(
+		'title' => t('Paypal Report'),
+		'description' => t('Displays a report of PayPal Transactions.'),
+		'page callback' => 'da_user_credits_paypal_report',
+		'page arguments' => array(2, 3),
+		'access arguments' => array('access credits paypal reports'),
+		'type' => MENU_CALLBACK,
+	);
+	$urls['ipn-handler'] = array(
+		'title' => t('Paypal IPN Handler'),
+		'description' => t('IPN Request Handler.'),
+		'page callback' => 'da_user_credits_ipn_handler',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+		'file' => 'ipn_handler.inc'
+	);
+
+	return $urls;
+}
+
+function da_user_credits_paypal_report($month, $year) {
+	$month = (int)$month;
+	$year  = (int)$year;
+
+	$start = mktime(0,0,0,$month,1,$year);
+	$end = mktime(23,59,00,$month+1,0,$year);
+	$query_fragment = " AND dir.timestamp > ".$start." AND dir.timestamp <".$end;
+
+	drupal_set_title('Paypal Report for '.date("F o", $end));
+
+	$content = '';
+	drupal_add_css(drupal_get_path('module', 'unlock_order').'/css/unlock_order_table.css');
+	
+	$payments = db_result(db_query("SELECT SUM(dir.total_payment) FROM {da_ipn_responses} dir WHERE status = 'Completed'".$query_fragment));
+	$revenue = db_result(db_query("SELECT SUM(dir.total_payment - dir.paypal_fee) FROM {da_ipn_responses} dir WHERE status = 'Completed'".$query_fragment));
+	$fee = db_result(db_query("SELECT SUM(dir.paypal_fee) FROM {da_ipn_responses} dir WHERE status = 'Completed'".$query_fragment));
+	$service_fee = db_result(db_query("SELECT SUM(dir.service_fee) FROM {da_ipn_responses} dir WHERE status = 'Completed'".$query_fragment));
+	$credits = db_result(db_query("SELECT SUM(dir.credits) FROM {da_ipn_responses} dir WHERE status = 'Completed'".$query_fragment));
+	if(db_result(db_query("SELECT COUNT(*) FROM {da_ipn_responses} dir WHERE 1 ".$query_fragment))) {
+		$content .= '<div class="paypal-stats">';
+		$content .= '<p><strong>Total Payments By Customers: </strong><span class="credit-amount">$'.number_format($payments, 2).'</span></p>';
+		$content .= '<p><strong>Total Paypal Fees Paid: </strong><span class="credit-amount" style="color: red;">$'.number_format($fee, 2).'</span></p>';
+		$content .= '<p><strong>Total Service Fees Charged: </strong><span class="credit-amount">$'.number_format($service_fee, 2).'</span></p>';
+		$content .= '<p><strong>Total Revenue: </strong><span class="credit-amount">$'.number_format($revenue, 2).'</span></p>';
+		$content .= '<p><strong>Total Credits Awarded: </strong><span class="credit-amount">'.number_format($credits, 2).'</span></p>';
+		$content .= '<p><strong>Average Profit Loss in Fees: </strong><span class="credit-amount" style="color: red">'.number_format(100-($revenue/$credits)*100, 2).'%</span></p>';
+		$content .= '</div>';
+	}
+	$header = array(array('data' => 'Date', 'field' => 'dir.timestamp'), array('data' => 'Transaction #', 'field' => 'dir.transaction_id', 'sort' => 'desc'), 'PayPal Ref', 'Status', 'Reseller', 'PayPal Email', 'First Name', 'Last Name', 'Total Payment', 'Credits Awarded', 'Service Fee Charged', 'Paypal Fee');
+	$sql = "SELECT * FROM {da_ipn_responses} dir WHERE 1 ".$query_fragment;
+	$transactions = pager_query($sql . tablesort_sql($header), 25, 0, NULL, $uid);
+	while($transaction = db_fetch_object($transactions)) {
+		if($transaction->timestamp) {
+			$timestamp = date("n/j/o", $transaction->timestamp);
+		} else {
+			$timestamp = '-';
+		}
+		$user = user_load($transaction->customer_uid);
+		$data[] = array($timestamp, $transaction->transaction_id, $transaction->paypal_txn_id, $transaction->status, l($user->name, 'user/'.$user->uid).'<br />'.$user->mail, $transaction->payer_email, $transaction->first_name, $transaction->last_name, '<span class="credit-amount">$'.number_format($transaction->total_payment, 2).'</span>', '<span class="credit-amount">'.number_format($transaction->credits, 2).'</span>', '<span class="credit-amount">$'.number_format($transaction->service_fee, 2).'</span>', '<span class="credit-amount" style="color: red;">$'.number_format($transaction->paypal_fee, 2).'</span>');
+	}
+	
+	$content .= theme('table', $header, $data);
+	$content .= theme('pager');
+	return $content;
+}
+
+//Create a configuration form callback for setting up the PayPal credit system.
+function da_user_credits_admin() {
+	$form = array();
+
+	$form['da_user_credits_username'] = array(
+		'#type' => 'textfield',
+		'#title' => t('PayPal Username'),
+		'#default_value' => variable_get('da_user_credits_username', ''),
+		'#size' => 21,
+		'#description' => t("This is the username where all payments will be sent."),
+		'#required' => TRUE,
+	);
+
+	$form['da_user_credits_transaction_mode'] = array(
+		'#type' => 'radios',
+		'#title' => t('Transaction Mode'),
+		'#default_value' => variable_get('da_user_credits_transaction_mode', ''),
+		'#options' => array(t('Test Mode'), t('Live Mode')),
+		'#required' => TRUE,
+	);
+
+	$form['da_user_credits_service_fee'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Service Fee Percentage'),
+		'#default_value' => variable_get('da_user_credits_service_fee', 0),
+		'#size' => 10,
+		'#required' => TRUE,
+	);
+	
+	$form['da_user_credits_threshold_amount'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Thershold Amount'),
+		'#default_value' => variable_get('da_user_credits_threshold_amount', 0),
+		'#size' => 10,
+		'#description' => t("The dollar amount under which the user will be charged a service fee."),
+		'#required' => TRUE,
+	);
+	
+	$form['da_user_credits_success'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Success URL'),
+		'#default_value' => variable_get('da_user_credits_success', ''),
+		'#size' => 32,
+		'#description' => t("The URL to go to after a successful transaction."),
+		'#required' => TRUE,
+	);
+	
+	$form['da_user_credits_cancel'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Cancel URL'),
+		'#default_value' => variable_get('da_user_credits_cancel', ''),
+		'#size' => 32,
+		'#description' => t("The URL to go to upon cancellation."),
+		'#required' => TRUE,
+	);
+
+	return system_settings_form($form);
+}
+
+function da_user_credits_form_alter(&$form, &$form_state, $form_id) {
+	if($form_id == 'user_profile_form' && user_access('administer user credits system') && (int)$form['#uid']) {
+		$form['da_user_credits'] = array(
+			'#type' => 'fieldset',
+			'#title' => 'Change User Credits'
+		);
+		$form['da_user_credits']['new_credits'] = array(
+			'#type' => 'textfield',
+			'#title' => t('Credits'),
+			'#default_value' => da_user_credits_fetch($form['#uid']),
+			'#size' => 10,
+			'#required' => TRUE
+		);
+		$form['#submit'][] = 'da_user_credits_update_credit_submit';
+	}
+}
+
+function da_user_credits_update_credit_submit($form, $form_state) {
+	da_user_credits_update_credits($form_state['values']['new_credits'], $form['#uid']);
+}
+
+//API Begin
+function da_user_credits_fetch($uid = 0) {
+	if(user_access("administer user credits system", user_load($uid)) || !(bool)$uid) {
+		$account = unlock_api_getaccountinfo();
+		return $account['credits'];
+	} else {
+		$row = db_fetch_object(db_query("SELECT duc.credit FROM {da_user_credits} duc WHERE duc.uid = %d", $uid));
+		$user_credit = $row->credit;
+		if(isset($row->credit)) {
+			$credits = number_format($row->credit, 2);
+		} else {
+			$credits = '0.00';
+		}
+	}
+
+	return $credits;
+}
+
+function da_user_credits_charge($amount, $uid) {
+	if((float)da_user_credits_fetch($uid) < (float)$amount) {
+		return false;
+	} else {
+		db_query("UPDATE {da_user_credits} duc SET duc.credit = (duc.credit - %f) WHERE duc.uid = %d", $amount, $uid);
+		return true;
+	}
+}
+
+function da_user_credits_add_credits($amount, $uid) {
+	if(db_result(db_query("SELECT COUNT(*) FROM {da_user_credits} duc WHERE duc.uid = %d", $uid))) {
+		db_query("UPDATE {da_user_credits} duc SET duc.credit = (duc.credit + %f) WHERE duc.uid = %d", $amount, $uid);
+	} else {
+		db_query("INSERT INTO {da_user_credits} (uid, credit) VALUES (%d, %f)", $uid, $amount);
+	}
+}
+
+function da_user_credits_update_credits($amount, $uid) {
+	if(db_result(db_query("SELECT COUNT(*) FROM {da_user_credits} duc WHERE duc.uid = %d", $uid))) {
+		db_query("UPDATE {da_user_credits} duc SET duc.credit = %f WHERE duc.uid = %d", $amount, $uid);
+	} else {
+		db_query("INSERT INTO {da_user_credits} (uid, credit) VALUES (%d, %f)", $uid, $amount);
+	}
+}

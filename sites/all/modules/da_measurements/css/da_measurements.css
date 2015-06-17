@@ -1,0 +1,8 @@
+.collapsible-howto {
+	float: right;
+	width: 280px;
+}
+
+.collapsible-howto .hidden-markup {
+	display: none;	
+}

@@ -1,0 +1,4 @@
+name = Login/Logout Link
+description = Implements a simple pretty block for login/logout links, based on login state.
+package = D.A. Custom Modules
+core = 6.x

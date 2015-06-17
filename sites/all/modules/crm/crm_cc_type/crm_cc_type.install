@@ -1,0 +1,32 @@
+<?php
+function crm_cc_type_schema() {
+	$schema = array();
+	$schema['crm_cc_type'] = array(
+		'description' => 'Stores supplementary cc type.',
+		'primary key' => array('order_id'),
+		'fields' => array(
+			'order_id' => array(
+				'description' => 'Primary key: the order ID.', 
+				'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+			),
+			'cc_type' => array(
+				'description' => 'Detected credit card type.',
+				'type' => 'varchar',
+				'length' => 20,
+				'not null' => TRUE
+			)
+		)
+	);
+
+	return $schema;
+}
+
+function crm_cc_type_install() {
+	drupal_install_schema('crm_cc_type');
+}
+
+function crm_cc_type_uninstall() {
+	drupal_uninstall_schema('crm_cc_type');
+}

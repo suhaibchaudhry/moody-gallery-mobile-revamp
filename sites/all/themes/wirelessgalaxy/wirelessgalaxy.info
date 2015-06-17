@@ -1,0 +1,23 @@
+name = WirelessGalaxy Theme
+description = WirelessGalaxy.com's Drupal Theme Desinged by DA Indians, cleaned up and implemented by DA Designers.
+version = 1.0
+core = 6.x
+engine = phptemplate
+stylesheets[all][] = style.css
+scripts[] = default_text/js/default_text.js
+
+regions[left] = Left Sidebar
+regions[usermenupane] = Quick User Menu
+regions[right] = Right sidebar
+regions[content] = Content
+regions[similar] = Similar Phones
+regions[top_left] = Top Left Box
+regions[live_person] = Live Person
+regions[top_right] = Top Right Box
+regions[breadcrum] = Bread Crum Bar
+regions[userpanel] = User Panel
+regions[footer1] = Footer Bar 1
+regions[footer2] = Footer Bar 2
+regions[footer3] = Footer Bar 3
+regions[footer4] = Footer Bar 4
+regions[footer5] = Footer Bar 5

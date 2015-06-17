@@ -1,0 +1,64 @@
+#home-bar {
+	width: 520px;	
+}
+#home-bar h2.front-boxes {
+	border-bottom:1px solid #C8C8C8;
+	line-height:35px;
+	color: #9D2D2D;
+}
+#home-bar h1.front-boxes {
+	border-bottom:1px solid #C8C8C8;
+	line-height: 33px;
+	font-size: 16px;
+	color: #9D2D2D;
+}
+#home-bar ul {
+	margin: 0;
+	padding: 0;	
+}
+#home-bar ul li {
+	list-style: none;
+	list-style-type none;
+	list-style-image: none;
+	float:left;
+	list-style:none outside none;
+	width:260px;
+}
+#home-bar ul li p {
+	font-family:"Trebuchet MS",Arial,Helvetica,sans-serif;
+	font-size:11px;
+	line-height:13px;
+	margin:0;
+	padding:0;
+}
+#home-bar ul li p.home-image {
+	display: block;
+	width: 100px;
+	height: 100px;
+	float: left;
+}
+#home-bar ul li p.home-snfo, #home-bar ul li p.home-price {
+	display: block;
+	width: 160px;
+	float: left;
+}
+#home-bar ul li p.home-price {
+	color: #9D2D2D;
+	font-size: 12px;
+	font-weight:bold;
+	margin:5px 0 0;
+}
+#home-bar div.home-accs {
+	width: 260px;
+	float: left;
+}
+
+#home-bar div.home-bluetooth {
+	width: 520px;
+	float: left;
+}
+
+#home-bar div.home-cellphones {
+	width: 260px;
+	float: left;
+}

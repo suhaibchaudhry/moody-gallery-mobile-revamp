@@ -1,0 +1,254 @@
+<?php
+function storminvoicecharge_menu() {
+	$items['admin/settings/storm/invoicecharge'] = array(
+		'title' => 'Storm Invoice Charge',
+		'description' => 'Storm Invoice Charge Administration Page',
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('storminvoicecharge_admin_settings'),
+		'access arguments' => array('Storm: access administration pages'),
+		'type' => MENU_LOCAL_TASK
+	);
+	
+	$items['payment'] = array(
+		'title' => 'Invoice Payment',
+		'description' => 'Make a Payment on a Storm Invoice',
+		'page callback' => 'storminvoicecharge_payment',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK
+	);
+	
+	$items['payment/%'] = array(
+		'title' => 'Find Invoice',
+		'description' => 'Invoice search ajaj handler.',
+		'page callback' => 'storminvoicecharge_invoice_search',
+		'page arguments' => array(1),
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK
+	);
+	
+	$items['storminvoicecharge/payment-callback'] = array(
+		'title' => 'Payment Callback',
+		'description' => 'Invoice payment processing gateway.',
+		'page callback' => 'storminvoicecharge_invoice_payment',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK
+	);
+	
+	$items['storminvoicecharge/cvv-info'] = array(
+		'title' => 'CVV Info',
+		'description' => 'CVV Help Page.',
+		'page callback' => 'storminvoicecharge_cvv_info',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK
+	);
+	
+	$items['storminvoicecharge/invoice/%node'] = array(
+		'title' => 'Invoice',
+		'page arguments' => array(2),
+		'description' => 'PDF Invoice',
+		'page callback' => 'storminvoicecharge_report',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK
+	);
+
+	return $items;
+}
+
+function storminvoicecharge_report($node) {
+	print theme('storminvoice_report', $node, 'pdf', 'en');
+}
+
+function storminvoicecharge_admin_settings() {
+	$form = array();
+	
+	$form['storminvoicecharge_api_login_id'] = array(
+		'#type' => 'textfield',
+		'#title' => t('API Login ID'),
+		'#default_value' => variable_get('storminvoicecharge_api_login_id', ''),
+		'#description' => 'API login ID for your Authorize.net merchant account.',
+		'#required' => TRUE
+	);
+
+	$form['storminvoicecharge_transac_key'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Transaction Key'),
+		'#default_value' => variable_get('storminvoicecharge_transac_key', ''),
+		'#description' => 'Transaction for your Authorize.net merchant account.',
+		'#required' => TRUE
+	);
+
+	return system_settings_form($form);
+}
+
+function storminvoicecharge_payment() {
+	$content = '<div class="javascript-disabled">Please use a Javascript enabled browser to access this page.</div>';
+	$content .= '<div class="javascript-enabled">';
+	$content .= '<p>Input your invoice number, find your invoice, and make your payment.</p>';
+	$content .= drupal_get_form('storminvoicecharge_invoice_form');
+	$content .= '<div class="stormchargeinvoice"><div class="invoice-loader"></div><div class="invoice-results"></div></div>';
+	$content .= '</div>';
+	return $content;
+}
+
+function storminvoicecharge_invoice_form(&$form_state) {
+	drupal_add_css(drupal_get_path('module', 'storminvoicecharge').'/css/storminvoicecharge_form.css');
+	drupal_add_js(drupal_get_path('module', 'storminvoicecharge').'/js/invoice.form.handler.js');
+
+	$form = array();
+	
+	$form['invoice_id'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Invoice #'),
+		'#description' => 'Your invoice number can be found on the top right corner of your invoice.',
+		'#size' => 30,
+		'#required' => TRUE,
+		'#attributes' => array('class' => 'invoice-number')
+	);
+	
+	$form['invoice_search'] = array(
+		'#type' => 'button',
+		'#value' => 'Find Invoice'
+	);
+	
+	$form['#attributes'] = array('class' => 'invoice-search-form');
+	
+	
+	return $form;
+}
+
+function storminvoicecharge_invoice_search($nid) {
+	drupal_set_header('Content-Type: application/json');
+	
+	$invoice = node_load($nid);
+	//dpm($invoice);
+	if(!empty($invoice) && $invoice->type == 'storminvoice') {
+		$paid = (bool)$invoice->paymentdate;
+		$json = array('found' => true, 'nid' => $nid, 'paid' => $paid, 'date' => date('d/m/y', $invoice->requestdate), $invoice->requestdate, 'title' => $invoice->title, 'organization' => $invoice->organization_title, 'total' => $invoice->total);
+		if(!$paid) {
+			$json['payment_form'] = '<div class="payment-form"><h2>Pay Online</h2><div class="payment-response"></div>'.drupal_get_form('storminvoicecharge_payment_form', $nid).'</div>';
+		}
+		print json_encode($json);
+	} else {
+		print json_encode(array('found' => false));
+	}
+}
+
+function storminvoicecharge_invoice_payment() {
+	drupal_set_header('Content-Type: application/json');
+
+	module_load_include('inc', 'storminvoicecharge', 'anet_php_sdk/AuthorizeNet');
+	$loginid = variable_get('storminvoicecharge_api_login_id', '');
+	$transackey = variable_get('storminvoicecharge_transac_key', '');
+	$nid = $_POST['nid'];
+	$invoice = node_load($nid);
+
+	if(!empty($loginid) && !empty($transackey) && !empty($invoice) && $invoice->type == 'storminvoice') {
+		$transaction = new AuthorizeNetAIM($loginid, $transackey);
+		$transaction->first_name = trim($_POST['first_name']);
+		$transaction->last_name = trim($_POST['last_name']);
+		$transaction->amount = number_format($invoice->total, 2, '.', '');
+		$transaction->card_num = str_replace(' ', '', str_replace(' ', '', $_POST['ccnumber']));
+		$transaction->exp_date = $_POST['expiration_month'].'/'.$_POST['expiration_year'];
+		$transaction->card_code = trim($_POST['cvv']);
+		$transaction->invoice_num = $nid;
+		
+		$response = $transaction->authorizeAndCapture();
+		if ($response->approved) {
+			db_query("UPDATE {storminvoice} i SET i.paymentdate = %d WHERE i.vid = %d", time(), $invoice->vid);
+  			//Send Email Later
+			//print "<h1>Success! The test credit card has been charged!</h1>"."Transaction ID: " . $response->transaction_id;
+			print json_encode(array('error' => false, 'message' => 'Your invoice has been successfully paid. Thank you.'));
+		} elseif($response->declined) {
+			print json_encode(array('error' => true, 'message' => 'The credit card information you provided was declined. Please Try again. For further assistance please call <strong>1 (800) 789-9736</strong>.'));
+		} else {
+			print json_encode(array('error' => true, 'message' => $response->response_reason_text));
+		}
+	} else {
+		print json_encode(array('error' => true, 'message' => 'An error occured while performing your request. For further assistance please call <strong>1 (800) 789-9736</strong>.'));
+	}
+}
+
+function storminvoicecharge_payment_form(&$form_state, $nid) {
+	$form = array();
+
+	$form['first_name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('First Name'),
+		'#size' => 30,
+		'#required' => TRUE
+	);
+
+	$form['last_name'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Last Name'),
+		'#size' => 30,
+		'#required' => TRUE
+	);
+	
+	$form['ccnumber'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Credit Card #'),
+		'#description' => 'ex: 4111111111111111',
+		'#size' => 30,
+		'#required' => TRUE
+	);
+	
+	$form['expiration_month'] = array(
+		'#type' => 'select',
+		'#title' => t('Expiration Date'),
+		'#prefix' => '<div class="expiration_date">',
+		'#options' => array(1 => '01 - January', 2 => '02 - February', 3 => '03 - March', 4 => '04 - April', 5 => '05 - May', 6 => '06 - June', 7 => '07 - July', 8 => '08 - August', 9 => '09 - September', 10 => '10 - October', 11 => '11 - November', 12 => '12 - December'),
+		'#required' => TRUE
+	);
+	
+	$form['expiration_year'] = array(
+		'#type' => 'select',
+		'#options' => stormcharge_generate_years(20),
+		'#suffix' => '</div>',
+		'#required' => TRUE
+	);
+	
+	$form['cvv'] = array(
+		'#type' => 'textfield',
+		'#title' => 'CVV',
+		'#size' => 5,
+		'#description' => '<a href="'.base_path().'storminvoicecharge/cvv-info" onclick="window.open(this.href, \'CVV_Info\', \'toolbar=0,scrollbars=1,location=0,statusbar=0,menubar=0,resizable=1,width=480,height=460\'); return false;">What is CVV?</a>',
+		'#required' => TRUE
+	);
+
+	$form['nid'] = array(
+		'#type' => 'hidden',
+		'#value' => $nid
+	);
+
+	$form['submit'] = array(
+		'#type' => 'button',
+		'#value' => 'Submit Payment'
+	);
+	
+	$form['#attributes'] = array('class' => 'payment-form');
+
+	return $form;
+}
+
+function stormcharge_generate_years($limit) {
+	$options = array();
+	$year = (int)date('Y');
+	$i = 0;
+	while($i <= $limit) {
+		$options[$year] = $year;
+		$year++;
+		$i++;
+	}
+	
+	return $options;
+}
+
+function storminvoicecharge_cvv_info() {
+	print '<html>';
+	print '<head><title>What is CVV?</title><style>body,p {font: 12px Verdana, Arial, Helvetica, sans-serif;} p {clear: both}</style></head>';
+	print '<body>';
+	print '<b>What is the CVV?</b><p>CVV stands for Card Verification Value. This number is used as a security feature to protect you from credit card fraud.  Finding the number on your card is a very simple process.  Just follow the directions below.</p><br /><b>Visa, Mastercard, Discover:</b><p><img src="'.base_path().drupal_get_path('module', 'storminvoicecharge').'/images/visa_cvv.jpg" align="left" />The CVV for these cards is found on the back side of the card.  It is only the last three digits on the far right of the signature panel box.</p><br /><p><b>American Express:</b><p><img src="'.base_path().drupal_get_path('module', 'storminvoicecharge').'/images/amex_cvv.jpg" align="left" />The CVV on American Express cards is found on the front of the card.  It is a four digit number printed in smaller text on the right side above the credit card number.</p><p><div align="right"><input type="button" onclick="self.close();" value="Close this window" /></div></p>';	
+	print '</body>';
+	print '</html>';
+}

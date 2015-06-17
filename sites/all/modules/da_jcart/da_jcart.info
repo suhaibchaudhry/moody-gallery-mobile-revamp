@@ -1,0 +1,4 @@
+name = JCart
+description = A JQuery collapsable implementation of the cart block.
+package = D.A. Custom Modules
+core = 6.x

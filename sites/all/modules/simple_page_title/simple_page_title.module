@@ -1,0 +1,107 @@
+<?php
+
+/**
+ * Implementation of hook_perm().
+ */
+function simple_page_title_perm() {
+  return array('administer simple page titles');
+}
+
+/**
+ * Implementation of hook_load().
+ * @param int $id
+ * @return object
+ */
+function page_title_object_load($id) {
+  module_load_include('inc', 'simple_page_title', 'simple_page_title.db');
+  $page_title_object = simple_page_title_get_page_title_object_for_id($id);
+  return $page_title_object;
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function simple_page_title_menu() {
+  $items = array();
+    
+  $items['admin/content/simple-page-title'] = array(
+    'title' => 'Simple Page Title',
+    'description' => 'Set Page Titles Manually Based On Path',
+    'page callback' => 'simple_page_title_admin_page',
+    'type' => MENU_NORMAL_ITEM,
+    'access callback' => 'user_access',
+    'access arguments' => array('administer simple page titles'),
+    'file' => 'simple_page_title.admin.inc',      
+  );
+    
+  $items['admin/content/simple-page-title/manage'] = array(
+    'title' => 'Manage Simple Page Titles',
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'access arguments' => array('administer simple page titles'),
+    'weight' => 0,      
+  );
+    
+  $items['admin/content/simple-page-title/settings'] = array(
+    'title' => 'Module Compatibility Settings',
+    'description' => 'Set Admin Settings',
+    'page callback' => 'simple_page_title_admin_settings_page',
+    'type' => MENU_LOCAL_TASK,
+    'access callback' => 'user_access',
+    'access arguments' => array('administer simple page titles'),
+    'file' => 'simple_page_title.admin.inc',
+    'weight' => 1      
+  );
+    
+  $items['admin/content/simple-page-title/edit/%page_title_object'] = array(
+    'title' => 'Edit Page Title For Path',
+    'description' => 'Set Page Titles Manually Based On Path',
+    'page callback' => 'simple_page_title_admin_edit_page',
+    'page arguments' => array(4),
+    'type' => MENU_NORMAL_ITEM,
+    'access callback' => 'user_access',
+    'access arguments' => array('administer simple page titles'),
+    'file' => 'simple_page_title.admin.inc',      
+  );
+    
+  $items['admin/content/simple-page-title/delete/%page_title_object'] = array(
+    'title' => 'Delete Page Title For Path',
+    'description' => 'Remove A Page Title For A Given Path',
+    'page callback' => 'simple_page_title_admin_path_delete',
+    'page arguments' => array(4),
+    'type' => MENU_NORMAL_ITEM,
+    'access callback' => 'user_access',
+    'access arguments' => array('administer simple page titles'),
+    'file' => 'simple_page_title.admin.inc',      
+  );
+    
+  return $items;
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function simple_page_title_theme() {
+  return array(
+    'simple_page_title_preprocess_page' => array(
+      'arguments' => array('vars' => NULL),
+    ),
+  );
+}
+
+
+/**
+ * Implementation of hook_preprocess_page();
+ */
+function simple_page_title_preprocess_page(&$vars) {
+  module_load_include('inc', 'simple_page_title', 'simple_page_title.db');
+  //get for aliases for the given url
+  $path = drupal_get_path_alias($_GET['q']);
+  //check for custom title based on original url and alias
+  $page_title_object = simple_page_title_get_page_title_object_for_path($_GET['q'], $path);
+  
+  //if $page_title_object exists, apply the custom title to the page
+  if (!empty($page_title_object)) {
+    $vars['head_title'] = t('@page_title', array('@page_title' => $page_title_object->page_title));
+  }
+  
+}

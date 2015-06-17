@@ -1,0 +1,5 @@
+name = Youtube WYSIWYG Embed
+description = Provides a WYSIWYG plugin for adding youtube videos. (Coded by DA Designers).
+package = User interface
+core = 6.x
+

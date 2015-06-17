@@ -1,0 +1,51 @@
+<?php
+function da_wholesale_price_cart_item($op, &$item) {
+  switch ($op) {
+    case 'load':
+	  if(user_access("Buy for Wholesale Prices")) {
+		$node = node_load($item->nid);
+      	//dpm($node);
+		$wholesale_price = _da_wholesale_price($node);
+		
+		if(!empty($wholesale_price) && $wholesale_price > 0) {
+			$item->price = $wholesale_price;
+		}
+	  }
+      break;
+  }
+}
+
+function _da_wholesale_price($node) {
+	global $user;
+	$i = 0;
+	if(isset($node->field_user_whole_sale)) {
+		foreach($node->field_user_whole_sale as $delta => $wholesale_user) {
+			if($wholesale_user['uid'] == $user->uid) {
+				$wholesale_price = $node->field_price_wholesale[$delta]['value'];
+				if(!empty($wholesale_price)) {
+					return $wholesale_price;
+				}
+			}
+		}
+	}
+	return $node->field_default_wholesale[0]['value'];
+}
+
+function da_wholesale_price_perm() {
+	return array("Buy for Wholesale Prices");
+}
+
+function da_wholesale_price_preprocess_node(&$variables) {
+	//Pass the wholesale price to the theme.
+	$node = $variables['node'];
+	$wholesale_price = _da_wholesale_price($node);
+	if(user_access("Buy for Wholesale Prices")) {
+		if(!empty($wholesale_price) && $wholesale_price > 0) {
+			$variables['wholesale_price'] = $wholesale_price;
+		} else {
+			$variables['wholesale_price'] = FALSE;
+		}
+	} else {
+		$variables['wholesale_price'] = FALSE;	
+	}
+}

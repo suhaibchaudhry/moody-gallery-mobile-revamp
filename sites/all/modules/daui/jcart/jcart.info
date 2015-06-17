@@ -1,0 +1,8 @@
+name = JCart
+description = A more skinnable JCart Implementation.
+package = D.A. UI
+core = 6.x
+
+dependencies[] = jquery_update
+dependencies[] = imagecache
+dependencies[] = uc_cart

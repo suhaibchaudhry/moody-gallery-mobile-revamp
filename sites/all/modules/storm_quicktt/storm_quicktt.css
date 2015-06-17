@@ -1,0 +1,5 @@
+#stormquicktt #edit-selects-projects {width:90%;}
+.storm-quicktt-pause:hover, .storm-quicktt-resume:hover {cursor:pointer;}
+.storm-quicktt-timer-box .storm-quicktt-resume {font-weight:bold;}
+.storm-quicktt-timer-box .storm-quicktt-resume:before {content:' (';}
+.storm-quicktt-timer-box .storm-quicktt-resume:after {content:'!)';}

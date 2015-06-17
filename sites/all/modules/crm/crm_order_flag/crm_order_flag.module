@@ -1,0 +1,270 @@
+<?php
+function crm_order_flag_menu() {
+	$urls = array();
+	$urls['admin/store/orders/crm_order_unflag/%'] = array(
+		'title' => t('Remove Flag'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('crm_order_unflag_form', 4),
+    	'access arguments' => array('view all orders'),
+		'type' => MENU_CALLBACK,
+  	);
+	return $urls;
+}
+
+function crm_order_unflag_form(&$form_state, $flag_id) {
+	global $user;
+	
+	$form['#flag_id'] = $flag_id;
+	$flag = db_fetch_object(db_query('SELECT * FROM {crm_order_flag} WHERE flag_id = %d', $flag_id));
+	if($flag->flagger_uid == $flag->flagged_for_uid) {
+		$reciever = 'yourself';
+		$setter = 'you';
+	} else {
+		$flagger = user_load($flag->flagger_uid);
+		$flagged_for = user_load($flag->flagged_for_uid);
+		$setter = l($flagger->name, 'user/'.$flagger->name);
+		$reciever = l($flagged_for->name, 'user/'.$flagged_for->name);
+	}
+	$form['#success_message'] = $setter.' for '.$reciever.' on order #'.$flag->order_id;
+	
+	$message = 'You are about to remove a flag that was set by '.$form['#success_message'].'.';
+	return confirm_form($form, 'Are you sure you want to remove the flag?', 'admin/store/orders', $message, 'Remove Flag', NULL, 'unflag_confimation');
+}
+
+function crm_order_unflag_form_submit($form, &$form_state) {
+	$flag_id = $form['#flag_id'];
+	db_query("DELETE FROM {crm_order_flag} WHERE flag_id = %d", $flag_id);
+	drupal_set_message("A Flag that was set by ".$form['#success_message'].' was sucessfully removed.');
+	drupal_goto('admin/store/orders');
+}
+
+function crm_order_flag_order($op, &$arg1, $arg2) {
+	if($op == "delete") {
+		db_query("DELETE FROM {crm_order_flag} WHERE order_id = %d", $arg1->order_id);
+	}
+}
+
+function crm_order_flag_order_pane() {
+	$panes = array();
+	$panes[] = array(
+		'id' => 'crm_order_flag_pane',
+		'callback' => '_crm_order_flag_display',
+		'title' => t('Order Flags'),
+		'desc' => t('Allows you to flag or unflag an order.'),
+		'class' => 'abs-left',
+		'weight' => 0,
+		'show' => array('view')
+	);
+
+	return $panes;
+}
+
+function crm_order_flag_advanced_search_prefix() {
+	//An implementation of hook_advanced_search_prefix called from order_advanced_search module
+	return _crm_order_flag_fetch_flag_table('Flags for you:', 'f.flagged_for_uid', 'Flagged By', 'flagger_uid');
+}
+
+function crm_order_flag_advanced_search_suffix() {
+	//An implementation of hook_advanced_search_suffix called from order_advanced_search module
+	return _crm_order_flag_fetch_flag_table('Flags by you:', 'f.flagger_uid', 'Flagged For', 'flagged_for_uid');
+}
+
+function _crm_order_flag_form_table($order_id) {
+	drupal_add_css(drupal_get_path('module', 'crm_order_flag').'/css/crm_order_flag_form_table.css');
+
+	$rows = array();
+	$header = array(
+		array('data' => t('Actions')),
+		array('data' => t('Flag Date'), 'field' => 'f.flag_created', 'sort' => 'desc'),
+		array('data' => t('Flag For'), 'field' => 'f.flagged_for_uid'),
+		array('data' => t('Flag By'), 'field' => 'f.flagger_uid'),
+		array('data' => t('Comment'))
+  	);
+	$sql = "SELECT f.flag_id, f.flagged_for_uid, f.flagger_uid, f.comments, f.flag_created FROM {crm_order_flag} f WHERE f.order_id = %d ".tablesort_sql($header);
+	$flags = db_query($sql, $order_id);
+	while($flag = db_fetch_object($flags)) {
+		$flag_for = user_load($flag->flagged_for_uid);
+		$flagger = user_load($flag->flagger_uid);
+		$rows[] = array(
+      		'data' => array(
+				array('data' => l('<img src="'. base_path() . drupal_get_path('module', 'crm_order_flag') .'/images/unflag.gif" alt="Clear Flag #'.$flag->flag_id.'" />', 'admin/store/orders/crm_order_unflag/'.$flag->flag_id, array('html' => TRUE))),
+				array('data' => format_date($flag->flag_created, 'custom', variable_get('uc_date_format_default', 'm/d/Y h:ia')), 'align' => 'center'),
+				array('data' => $flag_for->name),
+				array('data' => $flagger->name),
+				array('data' => $flag->comments),
+			),
+			'id' => 'flag-'. $flag->flag_id
+    	);
+	}
+	
+	if(empty($rows)) {
+		return '';
+	} else {
+		return theme('table', $header, $rows, array('class' => 'uc-flags-table'));
+	}
+}
+
+function _crm_order_flag_fetch_flag_table($heading, $user_sql_field, $flag_tag, $user_obj_field) {
+	global $user;
+
+	$output = '<h2>'.$heading.'</h2>';
+	$address = variable_get('uc_customer_list_address', 'billing');
+
+	$rows = array();
+	$header = array(
+		array('data' => t('Actions')),
+		array('data' => t('Flag Date'), 'field' => 'f.flag_created', 'sort' => 'desc'),
+		array('data' => t('Order ID'), 'field' => 'o.order_id'),
+		array('data' => t('Customer')),
+		array('data' => t($flag_tag)),
+		array('data' => t('Comment')),
+  	);
+	
+	$sql = "SELECT o.order_id, o.uid, o.billing_first_name, o.billing_last_name, o.order_status, f.flag_id, f.flagged_for_uid, f.flagger_uid, f.comments, f.flag_created FROM {uc_orders} o INNER JOIN {crm_order_flag} f ON o.order_id = f.order_id WHERE ".$user_sql_field." = %d ".tablesort_sql($header);
+	
+	if ($address == 'shipping') {
+		$sql = str_replace('billing', 'delivery', $sql);
+	} else {
+		$address = 'billing';
+	}
+	
+	$flags = db_query($sql, $user->uid);
+	while($flag = db_fetch_object($flags)) {
+		if ($address == 'shipping') {
+			$order_name = $flag->delivery_first_name .' '. $flag->delivery_last_name;
+		} else {
+			$order_name = $flag->billing_first_name .' '. $flag->billing_last_name;
+    	}
+	
+		if (trim($order_name) == '') {
+			if ($flag->uid !== 0) {
+				$account = db_result(db_query("SELECT name FROM {users} WHERE uid = %d", $order->uid));
+			}
+			if (empty($account)) {
+				$order_name = t('User: none');
+			} else {
+				$order_name = t('User: !name', array('!name' => $account));
+			}
+		}
+		
+		if(strlen($flag->comments) > 35) {
+			$comments = substr ($flag->comments, 0, 35).'...';
+		} else {
+			$comments = $flag->comments;	
+		}
+		
+		if($flag->flagged_for_uid == $flag->flagger_uid) {
+			$flagger = 'Self';
+		} else {
+			$flagger_obj = user_load($flag->$user_obj_field);
+			$flagger = l($flagger_obj->name, 'user/'.$flagger_obj->uid);
+		}
+		$rows[] = array(
+      		'data' => array(
+				array('data' => uc_order_actions($flag, TRUE), 'style' => 'white-space:nowrap;'),
+				array('data' => format_date($flag->flag_created, 'custom', variable_get('uc_date_format_default', 'm/d/Y h:ia')), 'align' => 'center'),
+				array('data' => $flag->order_id),
+				array('data' => check_plain($order_name)),
+				array('data' => $flagger),
+				array('data' => $comments),
+			),
+			'id' => 'order-'. $flag->order_id
+    	);
+	}
+	
+	if(empty($rows)) {
+		return '';	
+	} else {
+		return $output .= theme('table', $header, $rows, array('class' => 'uc-orders-table'));
+	}
+}
+
+function crm_order_flag_order_actions($flag) {
+	$actions = array();
+	if (user_access('view all orders') && isset($flag->flag_id)) {
+		$flag_id = $flag->flag_id;	
+		$alt = t('Clear Flag #@flag_id', array('@flag_id' => $flag_id));
+		$actions[] = array(
+			'name' => t('Unflag'),
+			'url' => 'admin/store/orders/crm_order_unflag/'.$flag->flag_id,
+			'icon' => '<img src="'. base_path() . drupal_get_path('module', 'crm_order_flag') .'/images/unflag.gif" alt="'. $alt .'" />',
+			'title' => $alt
+		);
+	}
+	return $actions;
+}
+
+function _crm_order_flag_display($op, $order) {
+	if($op == 'view') {
+		global $user;
+		return drupal_get_form('crm_order_flag_form', $order->order_id, $user->uid)._crm_order_flag_form_table($order->order_id);
+	} else {
+		return '';	
+	}
+}
+
+function crm_order_flag_form(&$form_state, $order_id, $uid) {
+	$form = array();
+	$form['#user_id'] = $uid;
+	$form['#order_id'] = $order_id;
+	$form['new_flag'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('New Flag'),
+		'#collapsible' => TRUE,
+		'#collapsed' => TRUE
+	);
+	$form['new_flag']['flag_for'] = array(
+		'#type' => 'select',
+		'#title' => t('Flag for'),
+		'#default_value' => $user->uid, 
+		'#options' => _crm_order_flag_get_users_with_perm('view all orders', $uid)
+	);
+	$form['new_flag']['flag_comment'] = array(
+		'#type' => 'textarea',
+		'#description' => '200 character limit',
+		'#title' => t('Comments'),
+	);
+	$form['new_flag']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Flag Order'),
+		'#id' => 'flag-order'
+	);
+	return $form;
+}
+
+function crm_order_flag_form_validate($form, &$form_state) {
+	$length = strlen($form['new_flag']['flag_comment']['#value']);
+	if($length > 200) {
+		form_set_error('flag_comment', 'Comment must be less that 200 characters. You have '.$length.' characters.');
+	}
+}
+
+function crm_order_flag_form_submit($form, &$form_state) {
+	$crm_order_flag = new stdClass;
+	$crm_order_flag->order_id = $form['#order_id'];
+	$crm_order_flag->flagged_for_uid = $form['new_flag']['flag_for']['#value'];
+	$crm_order_flag->flagger_uid = $form['#user_id'];
+	$crm_order_flag->comments = $form['new_flag']['flag_comment']['#value'];
+	$crm_order_flag->flag_created = time();
+
+	drupal_write_record('crm_order_flag', $crm_order_flag);
+	drupal_set_message('A new flag (#'.$crm_order_flag->flag_id.') has been set on order #'.$crm_order_flag->order_id);
+}
+
+function _crm_order_flag_get_users_with_perm($permission, $current_uid, $filter_current = TRUE) {
+	//Only Tested on MYSQL so far
+	$users = array($current_uid => 'Self');
+	$wheres = "WHERE p.perm LIKE '%%%s%%'";
+	
+	if($filter_current) {
+		$wheres .= " AND u.uid <> ".$current_uid;
+	}
+	
+	$sql = "SELECT u.uid, u.name, GROUP_CONCAT(r.name SEPARATOR ', ') AS roles FROM {users_roles} ur INNER JOIN {permission} p ON ur.rid = p.rid INNER JOIN {users} u on ur.uid = u.uid INNER JOIN {role} r on r.rid = p.rid ".$wheres." GROUP BY u.uid, u.name";
+
+	$resource = db_query($sql, $permission);
+	while($user = db_fetch_object($resource)) {
+		$users[$user->uid] = $user->name.' ('.$user->roles.')';
+	}
+	return $users;
+}

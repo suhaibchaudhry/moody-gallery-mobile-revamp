@@ -1,0 +1,4 @@
+name = User Credits
+description = Allows users to purchase credits using PayPal, and provide an API to other modules to use those credits.
+package = D.A. Custom Modules
+core = 6.x

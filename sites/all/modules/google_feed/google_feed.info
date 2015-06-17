@@ -1,0 +1,4 @@
+name = "Google Feed Generator"
+description = "Creates a comprehensive feed of all instock items."
+package = D.A. Custom Modules
+core = 6.x

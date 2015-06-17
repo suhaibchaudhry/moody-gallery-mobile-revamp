@@ -1,0 +1,89 @@
+<?php
+/**************************************************
+*												  *
+*					API START					  *
+*												  *
+***************************************************/
+
+function drupal_content_type_images() {
+	//Return an array with all content-type and their respective images.
+	$assoc = array();
+	$sql = "SELECT * FROM {da_content_type_images}";
+	$images = db_query($sql);
+	while($image = db_fetch_object($images)) {
+		$assoc[$image->content_type] = $image->image;
+	}
+	return $assoc;
+}
+
+function drupal_content_type_image($content_type) {
+	return _da_content_type_images_file_path($content_type);
+}
+/**************************************************
+*												  *
+*					API END						  *
+*												  *
+***************************************************/
+
+function da_content_type_images_form_alter(&$form, &$form_state, $form_id) {
+	if($form_id == 'node_type_form') {
+		$node_type = $form['#node_type'];
+		$orig_type = $node_type->orig_type;
+		if(!empty($orig_type)) {
+		
+			$form['#attributes'] = array('enctype' => "multipart/form-data");
+
+			$form['image'] = array (
+				'#type' => 'fieldset',
+				'#title' => 'Content Type Image',
+				'#collapsible' => TRUE,
+				'#collapsed' => TRUE,
+			);
+			$form['image']['upload'] = array('#type' => 'file',
+											 '#title' => 'Upload Image',
+											 '#prefix' => '',
+	  										 '#suffix' => _da_content_type_images_display($orig_type),
+										);
+										
+			$form['image']['deleteimg'] = array('#type' => 'checkbox',
+												'#title' => 'Delete Image and Hide from Grid Pages',
+										  );
+									
+			$form['#submit'][] = '_da_content_type_images_file_submit';
+		}
+	}
+}
+
+function _da_content_type_images_display($content_type) {
+	$image = _da_content_type_images_file_path($content_type);
+	
+	if(!empty($image)) {
+		return '<div class="da-uploaded-image"><strong>Current Image:</strong><br /><img src="'.base_path().$image.'" alt="Uploaded Image" /></div>';
+	} else {
+		return "";
+	}
+}
+
+function _da_content_type_images_file_path($content_type) {
+	$sql  = "SELECT * FROM {da_content_type_images} WHERE content_type = '%s'";
+	$result = db_fetch_object(db_query($sql, $content_type));
+	
+	return $result->image;
+}
+
+function _da_content_type_images_file_submit(&$form, &$form_state) {
+	$validators = array();
+	$delete = $form['image']['deleteimg']['#value'];
+	$node_type = $form['#node_type'];
+	$orig_type = $node_type->orig_type;
+	$file_path = _da_content_type_images_file_path($orig_type);
+
+	if($delete && !empty($file_path)) {
+		$sql = "DELETE FROM {da_content_type_images} WHERE content_type = '%s'";
+		file_delete($file_path);
+		db_query($sql, $orig_type);
+	} else if($file = file_save_upload('upload', $validators, file_directory_path())) {
+		$sql = "REPLACE INTO {da_content_type_images} SET content_type = '%s', image = '%s';";
+		db_query($sql, $orig_type, $file->filepath);
+	}
+}

@@ -1,0 +1,6 @@
+name = Facebook Like
+description = Passes a facebook like button to theme node pages.
+package = D.A. UI
+core = 6.x
+
+dependencies[] = jquery_update

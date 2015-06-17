@@ -1,0 +1,4 @@
+name = CRM Sync
+description = Performs syncronization of orders with the CRM system.
+package = D.A. Custom Modules
+core = 6.x

@@ -1,0 +1,40 @@
+<?php
+
+/**
+ * Implements hook_uninstall.
+ */
+function block_edit_uninstall() {
+  // Delete Block Edit's variables.
+  variable_del('block_edit_block_active_pages');
+  variable_del('block_edit_block_active_type');
+  variable_del('block_edit_block_links');
+  variable_del('block_edit_content_types');
+  variable_del('block_edit_display_options');
+  variable_del('block_edit_hover_links');
+  variable_del('block_edit_node_active_pages');
+  variable_del('block_edit_node_active_type');
+  variable_del('block_edit_node_links');
+  variable_del('block_edit_node_link_options');
+  variable_del('block_edit_panels_links');
+  variable_del('block_edit_tabs');
+}
+
+/**
+ * Upgrade scripts for 6.x-1.11 version.
+ */
+function block_edit_update_6100(&$sandbox) {
+  $return = array();
+
+  // The default value for displaying Panels links has changed, so everyone who
+  // hasn't set this variable yet should keep the old value.
+  if (!variable_get('block_edit_panels_links', FALSE)) {
+    variable_set('block_edit_panels_links', FALSE);
+  }
+
+  // Renamed "node_link_options" to respect the module's namespace.
+  $old = variable_get('node_link_options', block_edit_node_link_options());
+  variable_set('block_edit_node_link_options', $old);
+  variable_del('node_link_options');
+
+  return $return;
+}

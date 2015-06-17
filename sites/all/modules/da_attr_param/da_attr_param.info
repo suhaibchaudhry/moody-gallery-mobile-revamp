@@ -1,0 +1,5 @@
+; $Id$
+name = Attributes Parameters
+description = Adds a parameter field to ubercart attribute options, can be used to add color hex value to be associated with the attribute option.
+package = D.A. Custom Modules
+core = 6.x

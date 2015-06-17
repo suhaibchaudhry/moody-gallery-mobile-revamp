@@ -1,0 +1,954 @@
+<?php
+function da_views_block($op = 'list', $delta = 0, $edit = array()) {
+	switch($op) {
+		case 'list':
+			$blocks[0] = array(
+				'info' => 'Start shopping for a new phone',
+				'cache' => BLOCK_NO_CACHE
+			);
+			return $blocks;
+		case 'view':
+			drupal_add_css(drupal_get_path('module', 'da_views').'/css/da_views_block.css', 'module');
+			$i = 0;
+			
+			$subject = 'Start shopping for a new phone';
+			$content = '<div class="da-v-hblock">';
+			$content .= '<h2>'.$subject.'</h2>';
+			$content .= '<ul>';
+			$path = drupal_get_path('module', 'da_views').'/images/homeblock';
+			$files = file_scan_directory($path, '.*');
+			//dpm($files);
+			
+			foreach($files as $file) {
+				list($title, $tid) = explode('-', $file->name);
+				$content .= '<li>';
+				$content .= l('<img src="'.base_path().check_plain($file->filename).'" alt="'.check_plain($title).'" />', 'products/cellphones/'.$tid, array('html' => TRUE));
+				$content .= '<p>'.l($title, 'products/cellphones/'.$tid).'</p>';
+				$content .= '</li>';
+				if($i == 6) {
+					break;	
+				}
+				$i++;
+			}
+			
+			$content .= '</ul>';
+			$content .= '</div>';
+
+			$content .= drupal_get_form('da_views_home_browse', 'cellphones', _da_views_get_vocabularies('cellphones', array(), array()));
+			
+			return array('subject' => $subject, 'content' => $content);
+	}
+}
+/*
+function da_views_theme($existing, $type, $theme, $path) {
+	$themes = array();
+	$themes['product_grid_element'] = array(
+		'arguments' => array('node' => NULL)
+	);
+	return $themes;
+}
+*/
+function da_views_forms($form_id, $args) {
+	$forms['da_views_filter_form'] = array(
+		'callback' => '_da_views_filter_form_builder',
+	);
+	
+	$forms['da_views_home_browse'] = array(
+		'callback' => '_da_views_home_browse_form_builder',
+	);
+	
+	return $forms;
+}
+
+function _da_views_home_browse_form_builder($form_state, $content_type, $vocabularies) {
+	drupal_add_js(drupal_get_path('module', 'da_views').'/js/da_views_form_select.js', 'module');
+	drupal_add_css(drupal_get_path('module', 'da_views').'/css/da_views_forms.css', 'module');
+	
+	$form = array();
+	$weight = 0;
+	
+	while($vocabulary = db_fetch_object($vocabularies)) {
+		if(in_array($vocabulary->vid, array(22, 51))) {
+			$tree = taxonomy_get_tree($vocabulary->vid);
+
+			$default = 0;
+			$options = array();
+		
+			if($vocabulary->vid == 22) {
+				$title = 'Browse by Brand';
+				$options[$default] = '[Pick Brand]';
+			} else {
+				$title = 'Browse by Feature';	
+				$options[$default] = '[Pick Feature]';
+			}
+
+			foreach($tree as $term) {
+				$options[$term->tid] = $term->name;
+			}
+
+			$form['da_drop_'.$vocabulary->vid] = array(
+				'#type' => 'select',
+				'#title' => t($title),
+				'#prefix' => '<div id="browse-'.$vocabulary->vid.'" class="dropdown">',
+				'#suffix' => '</div>',
+				'#default_value' => $default,
+				'#options' => $options,
+				'#weight' => $weight
+			);
+			$weight--;
+		}
+	}
+	
+	$form['#content_type'] = $content_type;
+	
+	return $form;
+}
+
+function da_views_menu() {
+	$urls = array();
+	
+	//The url convention that will be followed thru the views is catalog/[node-type-name]/...[term-heirchy]
+	$urls['products/%'] = array (
+		"title callback" => '_da_views_generate_title',
+		"title arguments" => array(1),
+		"description" => 'Listings Cell Phones.',
+		"page callback" => '_da_views_generate_grid',
+		"page arguments" => array(1),
+		"access arguments" => array("access content"),
+		"type" => MENU_CALLBACK
+	);
+	
+	$urls['related'] = array (
+		"title" => 'Browsing Cell Phone Accessories',
+		"description" => 'Lists a vocabulary and content type to select from.',
+		"page callback" => '_da_views_generate_related_selection',
+		"access arguments" => array("access content"),
+		"type" => MENU_CALLBACK
+	);
+	
+	$urls['related/%'] = array (
+		"title callback" => '_da_views_generate_title_for_phns',
+		"title arguments" => array(1),
+		"description" => 'Listings Cell Phones.',
+		"page callback" => '_da_views_generate_related_grid',
+		"page arguments" => array(1),
+		"access arguments" => array("access content"),
+		"type" => MENU_CALLBACK
+	);
+	
+	$urls['related/show-products/%'] = array(
+		"title callback" => '_da_views_generate_title_for_sp',
+		"title arguments" => array(2),
+		"description" => 'Listings Accessories for a Cellphone.',
+		"page callback" => '_da_views_generate_show_products',
+		"page arguments" => array(2),
+		"access arguments" => array("access content"),
+		"type" => MENU_CALLBACK
+	);
+	
+	$urls['front'] = array (
+		"title callback" => "_da_views_make_front_title",
+		"description" => 'Home Page',
+		"page callback" => '_da_views_make_front',
+		"access arguments" => array("access content"),
+		"type" => MENU_CALLBACK
+	);
+	
+	$urls['show-for-type/%/%'] = array (
+		"title callback" => "_da_views_generate_title_for_tp",
+		"title arguments" => array(1, 2),
+		"description" => 'Displays accessories of a given content type and cellphone brand.',
+		"page callback" => '_da_views_acc_for_type',
+		"page arguments" => array(1, 2),
+		"access arguments" => array("access content"),
+		"type" => MENU_CALLBACK
+	);
+	
+	return $urls;
+}
+
+function _da_views_acc_for_type($content_type, $nid) {
+	$node = node_load($nid);
+	$content = '';
+	//dpm($node);
+	foreach($node as $field => $info) {
+		if(strpos($field, 'phone') !== FALSE) {
+			//generic keyword change later
+			foreach($info as $item) {
+				if(!empty($item['nid'])) {
+						$nid = $item['nid'];
+						$node = node_load($nid);
+						if($node->type == $content_type) {
+							$content .= node_view($node, TRUE, FALSE, FALSE);
+						}
+						//$content .= $nid.' : ';
+				}
+			}
+		}
+	}
+	
+	if(empty($content)) {
+		$content = 'We are not carrying any '._da_views_get_content_type_name($content_type).' for <strong>'.$node->title.'</strong> at the moment. But you can send us an e-mail or give us a call, and we will search through our vendors personally and try to find what you need :)';
+	}
+	
+	return $content;
+}
+
+function _da_views_generate_show_products($nid) {
+	$node = node_load($nid);
+	$content = '';
+	//dpm($node);
+	foreach($node as $field => $info) {
+		if(strpos($field, 'phone') !== FALSE) {
+			//generic keyword change later
+			foreach($info as $item) {
+				if(!empty($item['nid'])) {
+						$nid = $item['nid'];
+						$node = node_load($nid);
+						$content .= node_view($node, TRUE, FALSE, FALSE);
+						//$content .= $nid.' : ';
+				}
+			}
+		}
+	}
+	
+	if(empty($content)) {
+		$content = 'We are not carrying any accessories for <strong>'.$node->title.'</strong> at the moment. But you can send us an e-mail (<strong>inquiry@wirelessgalaxy.com</strong>) or give us a call (<strong>1-800-604-GLXY</strong>), and we will search through our vendors personally and try to find what you need :)';
+	}
+	
+	return $content;
+}
+
+function _da_views_make_front_title() {
+	return variable_get('site_name', "D.A. Designers.com");
+}
+
+function _da_views_write_home_sql($content_type, $show, $max_frame_shift) {
+	$limit = rand(0, $max_frame_shift).','.$show;
+	$custom_joins = 'INNER JOIN {content_field_stock_type} st ON n.vid = st.vid';
+	
+	$custom_wheres = "AND st.field_stock_type_value IN ('instock', 'backordered')"; //make sure products being fetched are in stock
+	//$custom_wheres .= " AND "; //avoid 0 priced products
+	
+	return "SELECT n.nid FROM {node} n ".$custom_joins." WHERE n.type = '".$content_type."' ".$custom_wheres." ORDER BY n.sticky, n.created DESC LIMIT ".$limit;
+}
+
+function _da_get_new_prods($acc_types, $title, $show, $max_frame_shift, $class, $more_link) {
+	$content .= '<div class="'.$class.'">';
+	$content .= $title;
+	$content .= '<ul>';
+	foreach($acc_types as $content_type) {
+		$result = db_query(_da_views_write_home_sql($content_type, $show, $max_frame_shift));	
+		while($node = db_fetch_object($result)) {
+			$content .= _da_views_render_node_plain($node->nid);
+		}
+	}
+	$content .= '</ul>';
+	$content .= l('Show More...', $more_link, array('attributes' => array('class' => 'readmore')));
+	$content .= '</div>';
+	return $content;
+}
+
+function _da_views_make_front() {
+	$GLOBALS['conf']['cache'] = FALSE;
+	drupal_add_css(drupal_get_path('module', 'da_views').'/css/da_views_front.css', 'module');
+	
+	$content = '<div id="home-bar">';
+
+	//get accessories
+	$content .= _da_get_new_prods(array('cellphones'), '<h1 class="front-boxes">Latest Cell Phones</h1>', 5, 15, 'home-cellphones', 'products/cellphones');
+	$content .= _da_get_new_prods(array('batteries', 'chargers', 'headsets', 'phone_holders', 'data_cables'), '<h2 class="front-boxes">Cell Phone Accessories</h2>', 1, 30, 'home-accs', 'related');
+	$content .= _da_get_new_prods(array('bluetooth'), '<h2 class="front-boxes">Bluetooth Products</h2>', 6, 20, 'home-bluetooth', 'products/bluetooth');
+
+	$content .= '</div>';
+	return $content;
+}
+
+
+function _da_views_generate_related_grid($content_type) {
+	$GLOBALS['conf']['cache'] = FALSE;
+	drupal_add_css(drupal_get_path('module', 'da_views').'/css/da_views_grid.css', 'module');
+	
+	$content = "";
+	
+	$tids  = func_get_args();
+	
+	/*
+	ob_start();
+	print_r($_SESSION);
+	drupal_set_message(ob_get_contents());
+	ob_end_flush();
+	*/
+	switch($_SESSION['prods_order']) {
+		case 1:
+			//Price (low to high)
+			$order = 'n.sticky DESC, pr.sell_price ASC';
+			$custom_joins = 'INNER JOIN {uc_products} pr ON n.vid = pr.vid';
+			$custom_wheres = "";
+			break;
+		case 2:
+			//Price (high to low)
+			$order = 'n.sticky DESC, pr.sell_price DESC';
+			$custom_joins = 'INNER JOIN {uc_products} pr ON n.vid = pr.vid';
+			$custom_wheres = "";
+			break;
+		case 3:
+			//Name ASC
+			$order = 'n.sticky DESC, n.title ASC';
+			$custom_joins = '';
+			$custom_wheres = "";
+			break;
+		case 4:
+			//Name DESC
+			$order = 'n.sticky DESC, n.title DESC';
+			$custom_joins = '';
+			$custom_wheres = "";
+			break;
+		default:
+			//New Releases
+			$order = 'n.sticky DESC, n.created DESC';
+			$custom_joins = '';
+			$custom_wheres = "";
+			break;
+	}
+		
+	switch($_SESSION['prods_per_page']) {
+		case 1:
+			$items_per_page = 20;
+			break;
+		case 2:
+			$items_per_page = 40;
+			break;
+		case 3:
+			$items_per_page = 80;
+			break;
+		case 4:	
+			$items_per_page = 100;
+			break;
+		default:
+			//using value mappings instead of using user input directly to avoid sql injection attacks.
+			$items_per_page = 16;
+			break;
+	}
+	
+	if(is_numeric(arg(1))) {
+		$content .= _da_gride_core('related/show-products/', $tids, $items_per_page, $order, $custom_joins, $custom_wheres);
+	} else {
+		$content_type_db = str_replace("-", "_", arg(1));
+		unset($tids[0]);
+		
+		if(empty($tids)) {
+			$content .= _da_views_generate_vocab_selection(22, 'related/'.$content_type.'/');
+		} else {
+			$content .= _da_gride_core('show-for-type/'.$content_type.'/', $tids, $items_per_page, $order, $custom_joins, $custom_wheres);
+			//$content .= call_user_func_array("_da_views_generate_related_grid", $tids);
+		
+		}
+	}
+	
+	return $content;
+}
+
+function _da_gride_core($base_url, $tids, $items_per_page, $order, $custom_joins, $custom_wheres) {
+	$content = _da_views_render_filters('cellphones', $tids, array(0, 2), array(), FALSE, FALSE, 'Filter Results', 'related');
+	
+	$nodes_db_resource = _da_views_nodes_from_tids($tids, 'and', $items_per_page, 0, $order, $custom_joins, $custom_wheres);
+		
+	while($node = db_fetch_object($nodes_db_resource)) {
+		$err_flag = FALSE;
+		$node = node_load($node->nid);
+		$content .= _da_node_related_render($node->nid, $node->field_image_cache, $node->title, $base_url.$node->nid);
+	}
+	if($err_flag) {
+		$content .= '<p class="error-str">Your filter criteria did not return any items. Please try again with a less specific search criteria.</p>';
+	}
+	$content .= theme('pager');
+	
+	return $content;
+}
+
+function _da_node_related_render($nid, $image_field, $title, $node_url) {
+	static $counter = 1;
+	$class = (($counter%4) == 0) ? ' prdt-tsr-last' : '';
+	
+	$content = '<div id="product-'.$nid.'" class="product-teaser">';
+	$content .= '<div class="prdt-information'.$class.'">';
+	$content .= '<div class="full-node-link"><p><a href="'.url($node_url).'">'.$title.'</a></p></div>';
+	$content .= '<div class="teaser-image"><p><a href="'.url($node_url).'">'. theme('imagecache', 'teaser_image', $image_field[0]['filepath'], $image_field[0]['data']['alt'], $image_field[0]['data']['title']) .'</a></p></div>';
+
+	$content .= '</div>';
+	$content .= '</div>';
+	
+	$counter++;
+	
+	return $content;
+}
+
+
+function _da_views_generate_related_selection() {
+	drupal_add_css(drupal_get_path('module', 'da_views').'/css/da_views_grid.css', 'module');
+	/*
+	$vocabulary = _da_views_get_vocabulary(21);
+	$content = '<div id="category-'.$vocabulary->vid.'" class="da-vocab-view-'.$vocabulary->view.'">';
+	$content .= '<h3 class="browse-msg">'.$vocabulary->description.'</h3>';
+	$tree = taxonomy_get_tree($vocabulary->vid);
+	foreach($tree as $term) {
+		if(variable_get('da_vocab_fields_tid_state_'.$term->tid, '0') == '0') {
+			$content .= '<div class="da-views-image">'.l(taxonomy_image_display($term->tid), 'related/'.$term->tid, array('html' => TRUE)).'</div>';
+		}
+	}
+	$content .= '</div>';
+	*/
+	$content = _da_views_generate_vocab_selection(21, 'related/');
+	
+	$content_types = drupal_content_type_images();
+	$content .= '<div id="category-ct-select" class="da-vocab-view-ct">';
+	$content .= '<h3 class="browse-msg">Browse by Accessory Type</h3>';
+	foreach($content_types as $content_type => $image) {
+		$clean_name = check_plain(_da_views_get_content_type_name($content_type));
+		$content .= '<div class="da-views-image">'.l('<img src="'.base_path().$image.'" alt="'.$clean_name.'" />'.$clean_name, 'related/'.str_replace("_", "-", $content_type), array('html' => TRUE)).'</div>';
+	}
+	$content .= '</div>';
+	
+	return $content;
+}
+
+function _da_views_generate_vocab_selection($vid, $base_path) {
+	$content = "";
+	
+	$vocabulary = _da_views_get_vocabulary($vid);
+	$content = '<div id="category-'.$vocabulary->vid.'" class="da-vocab-view-'.$vocabulary->view.'">';
+	$content .= '<h3 class="browse-msg">'.$vocabulary->description.'</h3>';
+	$tree = taxonomy_get_tree($vocabulary->vid);
+	foreach($tree as $term) {
+		if(variable_get('da_vocab_fields_tid_state_'.$term->tid, '0') == '0') {
+			$content .= '<div class="da-views-image">'.l(taxonomy_image_display($term->tid).check_plain($term->name), $base_path.$term->tid, array('html' => TRUE)).'</div>';
+		}
+	}
+	$content .= '</div>';
+	return $content;
+}
+
+
+
+function _da_views_generate_grid($content_type) {
+	$GLOBALS['conf']['cache'] = FALSE;
+	drupal_add_css(drupal_get_path('module', 'da_views').'/css/da_views_grid.css', 'module');
+	
+	$content = '';
+	$tids = func_get_args();
+	unset($tids[0]);
+	$show_checks = FALSE;
+	$content_type_orig = $content_type;
+	$content_type = str_replace("-", "_", $content_type);
+	$show_lines = FALSE;
+	
+	if(empty($tids)) {
+		$vocabularies = _da_views_get_vocabularies($content_type, array(0), array(0));
+		while($vocabulary = db_fetch_object($vocabularies)) {
+			$tree = taxonomy_get_tree($vocabulary->vid);
+			if($vocabulary->selection == 1) {
+				$show_lines = ($vocabulary->view == 2);
+				$content .= '<div id="category-'.$vocabulary->vid.'" class="da-vocab-view-'.$vocabulary->view.'">';
+				$content .= '<h3 class="browse-msg">'.$vocabulary->description.'</h3>';
+			}
+			foreach($tree as $term) {
+				if($vocabulary->selection == 1 && variable_get('da_vocab_fields_tid_state_'.$term->tid, '0') == '0') {
+					$content .= '<div class="da-views-image">'.l(taxonomy_image_display($term->tid).check_plain($term->name), 'products/'.str_replace("_", "-", $content_type_orig).'/'.$term->tid, array('html' => TRUE)).'</div>';
+				} else if($vocabulary->selection != 1) {
+					$show_checks = TRUE;
+					break;
+				}
+			}
+			if($vocabulary->selection == 1) {
+				$content .= '</div>';
+			}
+		}
+		if($show_lines) {
+			$content = '<div id="da-imgsel-grid" class="show-lines">'.$content;	
+		} else {
+			$content = '<div id="da-imgsel-grid">'.$content;
+		}
+		$content .= '</div>';
+		if($show_checks) {
+			$content .= '<div class="da-vocab-view-1">'._da_views_render_filters($content_type, $tids, array(0, 1), array(0), FALSE, FALSE, 'Browse by features', 'products/'.arg(1)).'</div>';
+		}
+	} else {
+		$err_flag = TRUE;
+		
+		switch($_SESSION['prods_order']) {
+			case 1:
+				//Price (low to high)
+				$order = 'n.sticky DESC, pr.sell_price ASC';
+				$custom_joins = 'INNER JOIN {uc_products} pr ON n.vid = pr.vid INNER JOIN {content_field_stock_type} st ON n.vid = st.vid';
+				$custom_wheres = "AND st.field_stock_type_value IN ('instock', 'backordered')";
+				break;
+			case 2:
+				//Price (high to low)
+				$order = 'n.sticky DESC, pr.sell_price DESC';
+				$custom_joins = 'INNER JOIN {uc_products} pr ON n.vid = pr.vid INNER JOIN {content_field_stock_type} st ON n.vid = st.vid';
+				$custom_wheres = "AND st.field_stock_type_value IN ('instock', 'backordered')";
+				break;
+			case 3:
+				//Name ASC
+				$order = 'n.sticky DESC, n.title ASC';
+				$custom_joins = 'INNER JOIN {content_field_stock_type} st ON n.vid = st.vid';
+				$custom_wheres = "AND st.field_stock_type_value IN ('instock', 'backordered')";
+				break;
+			case 4:
+				//Name DESC
+				$order = 'n.sticky DESC, n.title DESC';
+				$custom_joins = 'INNER JOIN {content_field_stock_type} st ON n.vid = st.vid';
+				$custom_wheres = "AND st.field_stock_type_value IN ('instock', 'backordered')";
+				break;
+			default:
+				//New Releases
+				$order = 'n.sticky DESC, n.created DESC';
+				$custom_joins = 'INNER JOIN {content_field_stock_type} st ON n.vid = st.vid';
+				$custom_wheres = "AND st.field_stock_type_value IN ('instock', 'backordered')";
+				break;
+		}
+		
+		switch($_SESSION['prods_per_page']) {
+			case 1:
+				$items_per_page = 20;
+				break;
+			case 2:
+				$items_per_page = 40;
+				break;
+			case 3:
+				$items_per_page = 80;
+				break;
+			case 4:	
+				$items_per_page = 100;
+				break;
+			default:
+				//using value mappings instead of using user input directly to avoid sql injection attacks.
+				$items_per_page = 16;
+				break;
+		}
+		if(count($tids) == 1) {
+			$term = taxonomy_get_term($tids[1]);
+			$content = '<p>'.$term->description.'</p>';
+		}
+		$content .= _da_views_render_filters($content_type, $tids, array(0), array(), TRUE, TRUE, 'Apply Filters', 'products/'.arg(1));
+	
+		$nodes_db_resource = _da_views_nodes_from_tids($tids, 'and', $items_per_page, 0, $order, $custom_joins, $custom_wheres);
+		
+		while($node = db_fetch_object($nodes_db_resource)) {
+			$err_flag = FALSE;
+			$node = node_load($node->nid);
+			$content .= node_view($node, TRUE);
+		}
+		if($err_flag) {
+			$content .= '<p class="error-str">Your filter criteria did not return any items. Please try again with a less specific search criteria.</p>';
+		}
+		$content .= theme('pager');
+	}
+	
+	return $content;
+}
+
+function _da_views_render_filters($content_type, $selected_tids, $blocked_selection_types = array(), $blocked_view_types = array(), $collapsible = TRUE, $collapsed = TRUE, $fieldset_head = 'Apply Filters', $base_link = 'products/cellphones') {
+	return drupal_get_form('da_views_filter_form', $content_type, _da_views_get_vocabularies($content_type, $blocked_selection_types, $blocked_view_types), $selected_tids, $blocked_selection_types, $collapsible, $collapsed, $fieldset_head, $base_link);
+}
+
+function _da_views_get_vocabularies($content_type, $blocked_selection_types = array(), $blocked_view_types = array()) {
+	$conditional_sql = '';
+	
+	foreach($blocked_view_types as $not_allowed) {
+		$conditional_sql .= ' AND d.view <> '.$not_allowed;
+	}
+	
+	foreach($blocked_selection_types as $not_allowed) {
+		$conditional_sql .= ' AND d.selection <> '.$not_allowed;
+	}
+	
+	$sql = "SELECT v.vid, d.view, d.selection, m.name, m.description FROM {vocabulary_node_types} v, {da_vocab_options} d, {vocabulary} m WHERE v.vid = d.vid AND v.vid = m.vid AND v.type = '%s'".$conditional_sql." ORDER BY d.selection ASC, m.weight ASC";
+	
+	return db_query($sql, $content_type);
+}
+
+function _da_views_get_vocabulary($vid) {
+	$sql = "SELECT v.vid, v.name, v.description, d.view, d.selection FROM {vocabulary} v INNER JOIN {da_vocab_options} d ON v.vid = d.vid WHERE v.vid = %d";
+	return db_fetch_object(db_query($sql, $vid));
+}
+
+function _da_views_filter_form_builder($form_state, $content_type, $vocabularies, $selected_tids, $blocked_selection_types, $collapsible, $collapsed, $fieldset_head = 'Apply Filters', $base_link = 'products/cellphones') {
+	drupal_add_css(drupal_get_path('module', 'da_views').'/css/da_views_forms.css', 'module');
+	
+	$form = array();
+	
+	$form['#base_link'] = $base_link;
+	$form['#prefix'] = '<div class="filterformwrapper">';
+	$form['#suffix'] = '</div>';
+	
+	while($vocabulary = db_fetch_object($vocabularies)) {
+		$tree = taxonomy_get_tree($vocabulary->vid);
+		
+		if(isset($_SESSION['prods_per_page'])) {
+			$items_per_page = $_SESSION['prods_per_page'];
+		} else {
+			$items_per_page = 16;
+		}
+		
+		if(isset($_SESSION['prods_order'])) {
+			$sort_order = $_SESSION['prods_order'];
+		} else {
+			$sort_order = 0;
+		}
+		
+		$default = 0;
+		$default_message = ($vocabulary->selection == 1) ? '-- All --' : '-- Any --'; 
+		$options = array(0 => $default_message);
+		$flag = TRUE;
+		$selected_options = array();
+		
+		foreach($tree as $term) {
+			if($vocabulary->selection == 1) {
+				$options[$term->tid] = $term->name;
+			} else {
+				//Title and Dropdown inputs dun need to escaped, but features get inserted in directly so they need to be for strictness.
+				$options[$term->tid] = l(check_plain($term->name), 'products/cellphones/'.$term->tid); //Browse by feature
+			}
+			if(in_array($term->tid, $selected_tids)) {
+				$default = $term->tid;
+				if($vocabulary->selection == 2) {
+					$flag = FALSE;
+					$selected_options[] = $term->tid;
+				}
+			}
+		}
+		
+		$collapsed = $flag;
+		
+		if($vocabulary->selection == 2 && $flag) {
+			$selected_options = array(0);	
+		}
+		
+		if($vocabulary->selection == 1) {
+			$form['da_drop_'.$vocabulary->vid] = array(
+				'#type' => 'select',
+				'#title' => t($vocabulary->name),
+				'#prefix' => '<div id="dropdown-'.$vocabulary->vid.'" class="dropdown">',
+				'#suffix' => '</div>',
+				'#default_value' => $default,
+				'#options' => $options
+			);
+		} else {
+			$form['fieldset-'.$vocabulary->vid] = array(
+				'#type' => 'fieldset',
+  				'#title' => t($vocabulary->name),
+				'#prefix' => '<div id="field-'.$vocabulary->vid.'" class="fullcollapsed">',
+				'#suffix' => '</div>',
+				'#collapsible' => $collapsible,
+				'#collapsed' => true,
+				//'#collapsed' => $collapsed,
+				'#weight' => 3,
+			);
+			$form['fieldset-'.$vocabulary->vid]['da_check_'.$vocabulary->vid] = array(
+				'#type' => 'checkboxes',
+				'#title' => t($vocabulary->description),
+				'#prefix' => '<div id="checklist-'.$vocabulary->vid.'" class="fcchecklist">',
+				'#suffix' => '</div>',
+				'#after_build' => array('_da_views_style_checkboxes'),
+				'#default_value' => $selected_options,
+				'#options' => $options
+			);
+		}
+	}
+	if(!in_array(1, $blocked_selection_types)) {
+		//Display only if vocabularies that are dropdown are being shown, because vacabularies that are checklists can be shows by em selves with no pagination.
+		$form['items_per_page'] = array(
+			'#type' => 'select',
+			'#title' => t('Per Page'),
+			'#prefix' => '<div id="dropdown-perpage" class="dropdown">',
+			'#suffix' => '</div>',
+			'#default_value' => $items_per_page,
+			'#weight' => 2,
+			'#options' => array(
+				0 => 16,
+				1 => 20,
+				2 => 40,
+				3 => 80,
+				4 => 100
+			)
+			//Multiples of 4 because WG theme width is 180px containing 4 elements each, needs to be more abstracted and theme friendly in the future
+		);
+		$form['order_by'] = array(
+			'#type' => 'select',
+			'#title' => t('Sort by'),
+			'#prefix' => '<div id="dropdown-sortby" class="dropdown">',
+			'#suffix' => '</div>',
+			'#default_value' => $sort_order,
+			'#weight' => 1,
+			'#options' => array(
+				0 => 'New Releases',
+				1 => 'Price (Low to High)',
+				2 => 'Price (High to Low)',
+				3 => 'Name (Ascending)',
+				4 => 'Name (Descending)'
+			)
+			//Multiples of 4 because WG theme width, needs to be more abstracted and themeable for future
+		);
+	}
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#submit' => array('_da_views_apply_filters'),
+		'#value' => $fieldset_head,
+		'#weight' => 4,
+		'#prefix' => '<div id="apply_filters">',
+		'#suffix' => '</div>'
+	);
+	
+	$form['#content_type'] = $content_type;
+	return $form;
+}
+
+function _da_views_apply_filters(&$form, &$form_state) {
+	$content_type = $form['#content_type'];
+	
+	$values = $form_state['values'];
+	$tids = array();
+	
+	$_SESSION['prods_per_page'] = $values['items_per_page']; //set the perpage parameter in session
+	$_SESSION['prods_order'] = $values['order_by']; //set sort by parameter in session
+	
+	foreach($values as $element => $value) {
+		if(strpos($element, 'da_') !== FALSE) {
+			if(is_array($value)) {
+				foreach($value as $option => $selection) {
+					if($option != 0 && $option == $selection) {
+						$tids[] = $selection;
+					}
+				}
+			} elseif ($value != 0) {
+				$tids[] = $value;
+			}
+		}
+	}
+	drupal_redirect_form($form, _da_views_generate_redirect_url($tids, $form['#base_link']));
+}
+
+function _da_views_generate_redirect_url($tids, $base_link) {
+	$url = $base_link;
+	foreach($tids as $tid) {
+		$url .= '/'.$tid;
+	}
+	return $url;
+}
+
+function _da_views_style_checkboxes($checkboxes) {
+	foreach($checkboxes as &$checkbox) {
+		if(isset($checkbox['#type']) && $checkbox['#type'] == 'checkbox') {
+			$checkbox['#prefix'] = '<div class="grid-checkbox">';
+			$checkbox['#suffix'] = '</div>';
+		}
+	}
+	return $checkboxes;
+}
+
+function _da_views_nodes_from_tids($tids = array(), $operator = 'or', $items_per_page = 10, $depth = 0, $order = 'n.sticky DESC, n.created DESC', $custom_joins = '', $custom_wheres = '') {
+   //a re-implementation of taxonomy_select_nodes(); with a per page parameter and custom joins for advanced sorting. Returns a database resource with nids.
+
+  if (count($tids) > 0) {
+    // For each term ID, generate an array of descendant term IDs to the right depth.
+    $descendant_tids = array();
+    if ($depth === 'all') {
+      $depth = NULL;
+    }
+    foreach ($tids as $index => $tid) {
+      $term = taxonomy_get_term($tid);
+      $tree = taxonomy_get_tree($term->vid, $tid, -1, $depth);
+      $descendant_tids[] = array_merge(array($tid), array_map('_taxonomy_get_tid_from_term', $tree));
+    }
+
+    if ($operator == 'or') {
+      $args = call_user_func_array('array_merge', $descendant_tids);
+      $placeholders = db_placeholders($args, 'int');
+      $sql = 'SELECT DISTINCT(n.nid), n.sticky, n.title, n.created FROM {node} n INNER JOIN {term_node} tn ON n.vid = tn.vid WHERE tn.tid IN ('. $placeholders .') AND n.status = 1 ORDER BY '. $order;
+      $sql_count = 'SELECT COUNT(DISTINCT(n.nid)) FROM {node} n INNER JOIN {term_node} tn ON n.vid = tn.vid WHERE tn.tid IN ('. $placeholders .') AND n.status = 1';
+    }
+    else {
+      $joins = '';
+      $wheres = '';
+      $args = array();
+      foreach ($descendant_tids as $index => $tids) {
+        $joins .= ' INNER JOIN {term_node} tn'. $index .' ON n.vid = tn'. $index .'.vid';
+        $wheres .= ' AND tn'. $index .'.tid IN ('. db_placeholders($tids, 'int') .')';
+        $args = array_merge($args, $tids);
+      }
+	  $joins .= ' '.$custom_joins;
+	  $wheres .= ' '.$custom_wheres;
+      $sql = 'SELECT DISTINCT(n.nid), n.sticky, n.title, n.created FROM {node} n '. $joins .' WHERE n.status = 1 '. $wheres .' ORDER BY '. $order;
+      $sql_count = 'SELECT COUNT(DISTINCT(n.nid)) FROM {node} n '. $joins .' WHERE n.status = 1 '. $wheres;
+    }
+    $sql = db_rewrite_sql($sql);
+    $sql_count = db_rewrite_sql($sql_count);
+   	$result = pager_query($sql, $items_per_page, 0, $sql_count, $args);
+  }
+
+  return $result;
+}
+
+function _da_views_generate_title_for_tp($content_type, $nid) {
+	//generate title for menu path show-for-type/%/%
+	$node = node_load($nid);
+	
+	
+	$breadcrumb = array();
+	$breadcrumb[] = l('Home', '<front>');
+	$breadcrumb[] = l('Cell Phone Accessories', 'related');
+	$breadcrumb[] = l($node->title, 'node/'.$nid);
+	$breadcrumb[] = l(_da_views_get_content_type_name($content_type), 'related/'.$content_type);
+	
+	drupal_set_breadcrumb($breadcrumb);
+	
+	return 'Listing '._da_views_get_content_type_name($content_type).' for '.$node->title;
+}
+
+function _da_views_generate_title_for_sp($nid) {
+	//generate title for menu path related/show-products/%
+	$node = node_load($nid);
+	
+	$breadcrumb = array();
+	$breadcrumb[] = l('Home', '<front>');
+	$breadcrumb[] = l('Cell Phone Accessories', 'related');
+	
+	drupal_set_breadcrumb($breadcrumb);
+	
+	return 'Listing accessories for '.$node->title;
+}
+
+function _da_views_generate_title_for_phns($tid1) {
+	//generate title for menu path related/%
+	$breadcrumb = array();
+	$breadcrumb[] = l('Home', '<front>');
+	$breadcrumb[] = l('Cell Phone Accessories', 'related');
+	
+	if(is_numeric($tid1)) {
+		$tid2 = arg(2);
+	} else {
+		$content_type = $tid1;
+		$tid1 = arg(2);
+		$tid2 = arg(3);
+		
+		$name = 'Please select your phone\'s brand :: '._da_views_get_content_type_name($content_type);
+		
+		$breadcrumb[] = l(_da_views_get_content_type_name($content_type), 'related/'.$content_type);
+	}
+	
+	if(empty($tid2) && !empty($tid1)) {
+		$term = taxonomy_get_term($tid1);
+		$name = 'Please select your phone :: '.$term->name;
+		
+		$breadcrumb[] = l($term->name, 'related/'.$tid1);
+	} else if(!empty($tid2) && !empty($tid1)) {
+		$term1 = taxonomy_get_term($tid1);
+		$term2 = taxonomy_get_term($tid2);
+		$name = 'Please select your phone :: '.$term2->name.' ('.$term1->name.')';
+		
+		$breadcrumb[] = l($term1->name, 'related/'.$tid1);
+		$breadcrumb[] = l($term2->name, 'related/'.$tid2);
+	}
+
+	drupal_set_breadcrumb($breadcrumb);	
+	return $name;
+}
+
+function _da_views_generate_title($content_type) {
+	//Generate a title for the provided content type, with set a breadcrum for custom grid pages that are level 2 taxonomy deep.
+	$content_type = str_replace("-", "_", $content_type);
+	
+	$breadcrumb = array();
+	$breadcrumb[] = l('Home', '<front>');
+	$breadcrumb[] = l(_da_views_get_content_type_name($content_type), 'products/'.$content_type);
+	
+	$tid1 = arg(2);
+	$tid2 = arg(3);
+	if(empty($tid2)) {
+		$term = taxonomy_get_term($tid1);
+		$name = $term->name;
+	} else {
+		$term1 = taxonomy_get_term($tid1);
+		$term2 = taxonomy_get_term($tid2);
+		$name = $term2->name.' ('.$term1->name.')';
+		
+		$breadcrumb[] = l($term1->name, 'products/'.$content_type.'/'.$term1->tid);
+		$breadcrumb[] = l($term2->name, 'products/'.$content_type.'/'.$term2->tid);
+	}
+	drupal_set_breadcrumb($breadcrumb);
+
+	return t($name.' '._da_views_get_content_type_name($content_type));
+}
+
+function _da_views_get_content_type_name($content_type) {
+	//Returns a human-readable content type name given a machine-readable content-type name.
+	//return $content_type;
+	$content_type = str_replace ('-', '_', $content_type);
+	$sql = "SELECT name FROM {node_type} nt WHERE type = '%s'";
+	$result = db_query($sql, $content_type);
+	$content_type = db_fetch_object($result);
+	if(empty($content_type->name)) {
+		return 'Error';
+	} else {
+		return $content_type->name;
+	}
+}
+
+function _da_views_render_node_plain($nid) {
+	//Renders a plain node with no add to cart options. Used on the custom front page to generate item previews. Needs to be a theme function later on.
+	$node = node_load($nid);
+	$image_field = $node->field_image_cache;
+	//dpm($node);
+	
+	if($node->type == 'cellphones') {
+		foreach($node->taxonomy as $term) {
+			if($term->vid == '21') {
+				$category = "Carrier: ".check_plain($term->name);
+			}
+		}
+	} else {
+		$taxonomy = $node->taxonomy;
+		$term = $taxonomy[key($taxonomy)];
+		$category = "Category: ".$term->name;
+	}
+	
+	$content = '<li>';
+	$content .= '<p class="home-image">'.l(theme('imagecache', 'front', $image_field[0]['filepath'], $image_field[0]['data']['alt'], $image_field[0]['data']['title']), 'node/'.$node->nid, array('html' => TRUE)).'</p>';
+	$content .= '<p class="home-snfo">'.l(check_plain($node->title), 'node/'.$node->nid).'</p>';
+	$content .= '<p class="home-snfo">'.$category.'</p>';
+	$content .= '<p class="home-price">'.check_plain('$'.sprintf("%.2f", round($node->sell_price, 2))).'</p>';
+	$content .= '</li>';
+	
+	return $content;
+}
+
+function da_views_preprocess_node(&$variables) {
+	//Parse variables for node.tpl.php
+	
+	$node = $variables['node'];
+	$related = array();
+	//dpm($node);
+	foreach($node as $field => $info) {
+		if(strpos($field, 'phone') !== FALSE) {
+			//generic keyword change later
+			foreach($info as $item) {
+				if(!empty($item['nid'])) {
+						$nid = $item['nid'];
+						$prod = node_load($nid);
+						$related[] = $prod;
+						//$content .= node_view($prod, TRUE, FALSE, FALSE);
+						//$content .= $nid.' : ';
+				}
+			}
+		}
+	}
+	
+	if(empty($related)) {
+		$related = 'We are not carrying any '._da_views_get_content_type_name($content_type).' for <strong>'.$node->title.'</strong> at the moment. But you can send us an e-mail (<strong>inquiry@wirelessgalaxy.com</strong>) or give us a call (<strong>1-800-604-GLXY</strong>), and we will search through our vendors personally and try to find what you need :)';
+	}
+	
+	$variables['teaser_val'] = filter_xss(node_load($variables['nid'])->teaser, array('a', 'strong', 'em'));
+	$variables['related'] = $related;
+}

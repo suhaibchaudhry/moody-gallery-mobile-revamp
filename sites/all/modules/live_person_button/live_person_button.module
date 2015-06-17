@@ -1,0 +1,77 @@
+<?php
+function live_person_button_init() {
+	$lpaccount = variable_get('live_person_account', '');
+	$width = variable_get('live_person_button_popup_width', '475');
+	$height = variable_get('live_person_button_popup_height', '400');
+	$image_root = variable_get('live_person_button_gallery_url', 'https://server.iad.liveperson.net/hcp/Gallery/ChatButton-Gallery/English/General/3a/');
+
+	if(!empty($lpaccount)) {
+		drupal_add_js(array('live_person' => array('lpAccount' => $lpaccount, 'width' => $width, 'height' => $height, 'image_root' => $image_root)), 'setting');
+		drupal_add_js(drupal_get_path('module', 'live_person_button').'/js/live_person_button.js');
+	}
+}
+
+function live_person_button_block($op = 'list', $delta = 0, $edit = array()) {
+	switch($op) {
+		case 'list':
+			$blocks[0] = array(
+				'info' => 'Live Person Button',
+				'cache' => BLOCK_CACHE_GLOBAL
+			);
+			return $blocks;
+			
+		case 'configure':
+			$form['gallery_url'] = array(
+				'#type' => 'textfield',
+				'#title' => t('Image Folder URL'),
+				'#description' => 'An online url to a folder where reponline.gif, repoffline.gif, and repoccupied.gif. Must begin with \'http://\' or \'https://\'. You can refer to Live Person\'s website for default gallery URLs, or upload your own custom images somewhere, and provide the url to that folder.',
+      			'#default_value' => variable_get('live_person_button_gallery_url', 'https://server.iad.liveperson.net/hcp/Gallery/ChatButton-Gallery/English/General/3a/')
+    		);
+			$form['width'] = array(
+				'#type' => 'textfield',
+				'#title' => t('Popup Window Width'),
+				'#description' => 'Width of chat popup window in pixels. Default: 475.',
+				'#default_value' => variable_get('live_person_button_popup_width', '475')
+			);
+			$form['height'] = array(
+				'#type' => 'textfield',
+				'#title' => t('Popup Window Height'),
+				'#description' => 'Width of chat popup window in pixels. Default: 400.',
+				'#default_value' => variable_get('live_person_button_popup_height', '400')
+			);
+			$form['show_rating'] = array(
+      			'#type' => 'select',
+      			'#title' => t('Show Live Person Rating'),
+				'#description' => 'Show a rating for your Live Person account.',
+      			'#default_value' => variable_get('live_person_button_show_rating', 0),
+				'#options' => array(0 => 'No', 1 => 'Yes')
+    		);
+			
+    		return $form;
+			
+		case 'save':
+			variable_set('live_person_button_gallery_url', $edit['gallery_url']);
+			variable_set('live_person_button_popup_width', $edit['width']);
+			variable_set('live_person_button_popup_height', $edit['height']);
+			variable_set('live_person_button_show_rating', $edit['show_rating']);
+			break;
+			
+		case 'view':
+			$content = '';
+			$lpaccount = variable_get('live_person_account', '');
+			$width = variable_get('live_person_button_popup_width', '475');
+			$height = variable_get('live_person_button_popup_height', '400');
+			$show_rating = variable_get('live_person_button_show_rating', 0);
+			$image_root = variable_get('live_person_button_gallery_url', 'https://server.iad.liveperson.net/hcp/Gallery/ChatButton-Gallery/English/General/3a/');
+			
+			if(!empty($lpaccount) && !empty($image_root)) {
+				$content .= '<a id="_lpChatBtn" href="https://server.iad.liveperson.net/hc/'.$lpaccount.'/?cmd=file&amp;file=visitorWantsToChat&amp;site='.$lpaccount.'&amp;byhref=1&amp;imageUrl='.$image_root.'"><img src="https://server.iad.liveperson.net/hc/'.$lpaccount.'/?cmd=repstate&amp;site='.$lpaccount.'&amp;channel=web&amp;&amp;ver=1&amp;imageUrl='.$image_root.'" alt="Chat Button" /></a>';
+
+				if($show_rating) {
+					$content .= '<a id="_lpChatRating" href="http://solutions.liveperson.com/customer-service/?site='.$lpaccount.'&amp;domain=server.iad.liveperson.net&amp;origin=chatbutton"><img src="https://server.iad.liveperson.net/hc/'.$lpaccount.'/?cmd=rating&amp;site='.$lpaccount.'&amp;type=indicator" alt="Customer Service Rating by LivePerson" /></a>';
+				}
+			}
+
+			return array('subject' => '<none>', 'content' => $content);
+	}
+}

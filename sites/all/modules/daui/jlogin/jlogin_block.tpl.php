@@ -1,0 +1,1 @@
+<div class="jlogin-block"><?php print $form; ?></div>

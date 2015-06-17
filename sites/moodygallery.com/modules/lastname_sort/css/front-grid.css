@@ -1,0 +1,11 @@
+.view-front .views-row {
+	float: left;
+	overflow: hidden;
+	margin: 0 0 0 5px;
+}
+.view-front .views-row-1 {
+	margin: 0;	
+}
+.view-front .views-field-field-cover-image-fid {
+	overflow: hidden;	
+}

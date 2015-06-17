@@ -1,0 +1,5 @@
+﻿version = "1.0"
+name = "Unlock API"
+description = "Provides a API implementation of the Unlockcodesource.com API for other modules."
+package = "Cellphone Unlocking"
+core = 6.x

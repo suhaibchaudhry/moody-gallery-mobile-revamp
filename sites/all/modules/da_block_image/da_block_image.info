@@ -1,0 +1,4 @@
+name = Block Images
+description = Attach images to Blocks which will be avaialable in block.tpl.php files.
+package = D.A. Custom Modules
+core = 6.x

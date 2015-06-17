@@ -1,0 +1,10 @@
+name = MultiBlock
+description = Allows the creation of multiple instances of blocks
+core = 6.x
+
+; Information added by Drupal.org packaging script on 2015-03-17
+version = "6.x-1.5"
+core = "6.x"
+project = "multiblock"
+datestamp = "1426611344"
+

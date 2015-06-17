@@ -1,0 +1,5 @@
+; $Id$
+name = Slider Block
+description = Implements a JQuery Slider block.
+package = D.A. Custom Modules
+core = 6.x

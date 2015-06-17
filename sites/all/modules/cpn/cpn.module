@@ -1,0 +1,343 @@
+<?php
+
+/**
+ * Implementation of hook_perm().
+ */
+function cpn_perm() {
+  return array(
+    'edit css per node',
+    'edit javascript per node',
+    'edit css per block',
+    'edit javascript per block',
+  );
+}
+
+/**
+ * Implementation of hook_help().
+ */
+function cpn_help($path, $arg) {
+  if ($path == 'admin/settings/cpn' and !is_file('sites/all/libraries/codemirror/js/codemirror.js')) {
+    return '<p>'. t('Syntax highlighting requires <a href="@url">CodeMirror</a>. Download it, rename the folder "codemirror", and place it at "sites/all/libraries". Then return to this page and enable syntax highlighting.', array('@url' => 'http://codemirror.net/')) .'</p>';
+  }
+}
+
+/**
+ * Implementation of hook_menu().
+ */
+function cpn_menu() {
+  $items['admin/settings/cpn'] = array(
+    'title' => 'Code per Node',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cpn_settings'),
+    'access arguments' => array('administer site configuration'),
+    'file' => 'cpn.admin.inc',
+  );
+  return $items;
+}
+
+/**
+ * Implemenation of hook_form_alter().
+ */ 
+function cpn_form_alter(&$form, $form_state, $form_id) {
+
+  // Node form.
+  if (isset($form['type']) and isset($form['#node']) and $form_id == $form['type']['#value'] .'_node_form') {
+    $title = array();
+
+    // CSS.
+    if (variable_get('cpn_css_'. $form['#node']->type, FALSE) and user_access('edit css per node')) {
+      $form['cpn']['css'] = array(
+        '#type' => 'textarea',
+        '#title' => t('CSS'),
+        '#default_value' => $form['#node']->cpn['css'],
+        '#description' => t('Custom CSS rules for this node. Do not include @style tags.', array('@style' => '<style>')),
+      );
+      $title[] = 'CSS';
+    }
+
+    // JS.
+    if (variable_get('cpn_js_'. $form['#node']->type, FALSE) and user_access('edit javascript per node')) {
+      $form['cpn']['js'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Javascript'),
+        '#default_value' => $form['#node']->cpn['js'],
+        '#description' => t('Custom Javascript for this node. Do not include @script tags.', array('@script' => '<script>')),
+      );
+      $title[] = 'Javascript';
+    }
+
+    // Fieldset.
+    if (isset($form['cpn'])) {
+      $form['cpn']['#type'] = 'fieldset';
+      $form['cpn']['#title'] = t(join(' & ', $title));
+      $form['cpn']['#collapsible'] = TRUE;
+      $form['cpn']['#tree'] = TRUE;
+      $form['cpn']['#collapsed'] = !drupal_strlen(trim($form['#node']->cpn['css'] . $form['#node']->cpn['js']));
+      $form['#after_build'][] = 'cpn_after_build';
+    }
+  }
+
+  // Add content type settings.
+  if ($form_id == 'node_type_form' and isset($form['#node_type'])) {
+    $form['cpn'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Code per Node settings'),
+      '#collapsible' => TRUE,
+      '#collapsed' => TRUE,
+    );
+    $form['cpn']['cpn_css'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Enable custom CSS.'),
+      '#return_value' => 1,
+      '#default_value' => variable_get('cpn_css_'. $form['#node_type']->type, FALSE),
+      '#description' => t('Users with the <em>edit node css</em> permission will be able to edit custom CSS rules per node.'),
+    );
+    $form['cpn']['cpn_js'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Enable custom Javascript.'),
+      '#return_value' => 1,
+      '#default_value' => variable_get('cpn_js_'. $form['#node_type']->type, FALSE),
+      '#description' => t('Users with the <em>edit node javascript</em> permission will be able to edit custom Javascript per node.'),
+    );
+  }
+
+  // Block form (editing any block, or creating a Block module block).
+  if ($form_id == 'block_admin_configure' or ($form_id == 'block_add_block_form' and $form['module']['#value'] == 'block')) {
+    $title = array();
+
+    // Load block CSS & JS.
+    $cpn = array('css' => '', 'js' => '');
+    if (!empty($form['delta']['#value'])) {
+      $cpn = db_fetch_array(db_query("SELECT css, js FROM {blocks} WHERE module = '%s' AND delta = '%s'", $form['module']['#value'], $form['delta']['#value']));
+    }
+
+    // CSS.
+    if (user_access('edit css per block')) {
+      $form['cpn']['css'] = array(
+        '#type' => 'textarea',
+        '#title' => t('CSS'),
+        '#default_value' => $cpn['css'],
+        '#description' => t('Custom CSS rules for this node. Do not include @style tags.', array('@style' => '<style>')),
+      );
+      $title[] = 'CSS';
+    }
+
+    // JS.
+    if (user_access('edit javascript per block')) {
+      $form['cpn']['js'] = array(
+        '#type' => 'textarea',
+        '#title' => t('Javascript'),
+        '#default_value' => $cpn['js'],
+        '#description' => t('Custom Javascript for this node. Do not include @script tags.', array('@script' => '<script>')),
+      );
+      $title[] = 'Javascript';
+    }
+
+    // Fieldset.
+    if (isset($form['cpn'])) {
+      $form['cpn']['#type'] = 'fieldset';
+      $form['cpn']['#title'] = t(join(' & ', $title));
+      $form['cpn']['#collapsible'] = TRUE;
+      $form['cpn']['#tree'] = TRUE;
+      $form['cpn']['#collapsed'] = FALSE;
+      $form['submit']['#weight'] = 5;
+      $form['#after_build'][] = 'cpn_after_build';
+      $form['#validate'][] = 'cpn_block_validate';
+      $form['#submit'][] = 'cpn_block_submit';
+    }
+  }
+
+}
+
+/**
+ * "#after_build" function which adds syntax highlighting.
+ * See http://drupal.org/node/322290.
+ */
+function cpn_after_build($form_element, &$form_state) {
+  switch (variable_get('cpn_syntax_highlighting', 0)) {
+    case 'codemirror':
+      drupal_add_js('sites/all/libraries/codemirror/lib/codemirror.js');
+      drupal_add_css('sites/all/libraries/codemirror/lib/codemirror.css');
+      if (isset($form_element['cpn']['css'])) {
+        drupal_add_js('sites/all/libraries/codemirror/mode/css/css.js');
+      }
+      if (isset($form_element['cpn']['js'])) {
+        drupal_add_js('sites/all/libraries/codemirror/mode/javascript/javascript.js');
+      }
+      drupal_add_css('sites/all/libraries/codemirror/theme/default.css');
+      drupal_add_js(drupal_get_path('module', 'cpn') .'/cpn.js');
+      drupal_add_css(drupal_get_path('module', 'cpn') .'/cpn.css');
+      break;
+  }
+  return $form_element;
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ */
+function cpn_nodeapi(&$node, $op, $teaser = NULL, $page = NULL) {
+  static $previous_op = NULL;
+  switch ($op) {
+
+    // Validating: ensure no "style" or "script" tags are included.
+    case 'validate':
+      if (isset($node->cpn['css']) and cpn_validate($node->cpn['css'], 'css')) {
+        form_set_error('cpn][css', t('Do not include @style tags in the CSS.', array('@style' => '<style>')));
+      }
+      if (isset($node->cpn['js']) and cpn_validate($node->cpn['js'], 'js')) {
+        form_set_error('cpn][js', t('Do not include @script tags in the Javascript.', array('@script' => '<script>')));
+      }
+      break;
+
+    // Updating: delete from DB and file system, and intentionally fallthrough
+    // to "insert" op below.
+    case 'update':
+      if (isset($node->cpn)) {
+        db_query("DELETE FROM {cpn} WHERE nid = %d", $node->nid);
+        file_delete(file_create_path('cpn/'. $node->nid .'.css'));
+        file_delete(file_create_path('cpn/'. $node->nid .'.js'));
+      }
+
+    // Inserting: save in DB and file system.
+    case 'insert':
+      if (isset($node->cpn) and drupal_strlen(trim($node->cpn['css'] . $node->cpn['js']))) {
+        db_query("INSERT INTO {cpn} VALUES (%d, '%s', '%s')", $node->nid, $node->cpn['css'], $node->cpn['js']);
+        cpn_save_file($node->cpn['css'], $node->nid .'.css');
+        cpn_save_file($node->cpn['js'], $node->nid .'.js');
+      }
+      break;
+
+    // Deleting: delete from DB and file system.
+    case 'delete':
+      db_query("DELETE FROM {cpn} WHERE nid = %d", $node->nid);
+      file_delete(file_create_path('cpn/'. $node->nid .'.css'));
+      file_delete(file_create_path('cpn/'. $node->nid .'.js'));
+      break;
+
+    // Loading: add "cpn" variable to the node object.
+    case 'load':
+      return array('cpn' => db_fetch_array(db_query("SELECT css, js FROM {cpn} WHERE nid = %d", $node->nid)));
+      break;
+
+    // Viewing & Previewing.
+    case 'view':
+      // Previewing: add CSS and/or JS to the page, inline.
+      if ($previous_op == 'validate') {
+        if (drupal_strlen(trim($node->cpn['css']))) {
+          // NOTE: This is injected at the top of the page, before all <link> tags.
+          // It should be injected after the <link> tags.
+          // Possible in D7: http://drupal.org/node/259368
+          // Not easily possible in D6: http://drupal.org/node/143209
+          drupal_set_html_head('<style type="text/css" media="all"> '. $node->cpn['css'] .' </style>');
+        }
+        if (drupal_strlen(trim($node->cpn['js']))) {
+          drupal_add_js($node->cpn['js'], 'inline');
+        }
+      }
+      // Viewing: add files to the page (but only if they exist).
+      else {
+        $css = file_create_path('cpn/'. $node->nid .'.css');
+        $js = file_create_path('cpn/'. $node->nid .'.js');
+        if (is_file($css)) {
+          drupal_add_css($css, 'theme');
+        }
+        if (is_file($js)) {
+          drupal_add_js($js, 'theme');
+        }
+      }
+      break;
+  }
+
+  $previous_op = $op;
+}
+
+/**
+ * Block validation callback.
+ */
+function cpn_block_validate($form, &$form_state) {
+  // Ensure no "style" or "script" tags are included.
+  if (cpn_validate($form_state['values']['cpn']['css'], 'css')) {
+    form_set_error('cpn][css', t('Do not include @style tags in the CSS.', array('@style' => '<style>')));
+  }
+  if (cpn_validate($form_state['values']['cpn']['js'], 'js')) {
+    form_set_error('cpn][js', t('Do not include @script tags in the Javascript.', array('@script' => '<script>')));
+  }
+}
+
+/**
+ * Block submit callback.
+ */
+function cpn_block_submit($form, &$form_state) {
+  if (isset($form_state['values']['cpn'])) {
+    $module = $form_state['values']['module'];
+    $delta = $form_state['values']['delta'];
+
+    // "Block" block was just created; get delta from "boxes" table.
+    if (empty($delta) and $module == 'block') {
+      $delta = db_result(db_query("SELECT bid FROM {boxes} ORDER BY bid DESC LIMIT 1"));
+    }
+    
+    // Save in database.
+    db_query("UPDATE {blocks} SET css = '%s', js = '%s' WHERE module = '%s' AND delta = '%s'", $form_state['values']['cpn']['css'], $form_state['values']['cpn']['js'], $module, $delta);
+
+    // Delete existing files.
+    file_delete(file_create_path('cpn/'. $module .'-'. $delta .'.css'));
+    file_delete(file_create_path('cpn/'. $module .'-'. $delta .'.js'));
+
+    // Save files.
+    cpn_save_file($form_state['values']['cpn']['css'], $module .'-'. $delta .'.css');
+    cpn_save_file($form_state['values']['cpn']['js'], $module .'-'. $delta .'.js');
+  }
+}
+
+/**
+ * Implementation of template_preprocess_block().
+ */
+function cpn_preprocess_block(&$vars) {
+  // Add files to the page (but only if they exist).
+  $css = file_create_path('cpn/'. $vars['block']->module .'-'. $vars['block']->delta .'.css');
+  $js = file_create_path('cpn/'. $vars['block']->module .'-'. $vars['block']->delta .'.js');
+  if (is_file($css)) {
+    drupal_add_css($css, 'theme');
+  }
+  if (is_file($js)) {
+    drupal_add_js($js, 'theme');
+  }
+}
+
+/**
+ * Validates CSS or Javascript.
+ */
+function cpn_validate($data, $type) {
+  $patterns = array(
+    'css' => '~<\s*\/?\s*style\s*.*?>~i',
+    'js' => '~<\s*\/?\s*script\s*.*?>~i',
+  );
+  return preg_match($patterns[$type], $data);
+}
+
+/**
+ * Saves CSS & Javascript in the file system (but only if not empty).
+ */
+function cpn_save_file($data, $filename) {
+  if (!drupal_strlen(trim($data))) {
+    return FALSE;
+  }
+  $path = file_create_path('cpn');
+  file_check_directory($path, FILE_CREATE_DIRECTORY) or mkdir($path, 0755, TRUE);
+  return file_save_data($data, $path .'/'. $filename, FILE_EXISTS_REPLACE);
+}
+
+/**
+ * Implementation of hook_content_extra_fields().
+ */
+function cpn_content_extra_fields($type_name) {
+  if (variable_get('cpn_css_' . $type_name, FALSE) || variable_get('cpn_js_' . $type_name, FALSE)) {
+    $extras['cpn'] = array(
+      'label' => t('Code Per Node'),
+      'description' => t('Custom CSS and/or JS fields.'),
+      'weight' => 5,
+    );
+    return $extras;
+  }
+}

@@ -1,0 +1,136 @@
+<?php
+function da_acid_slider_theme($existing, $type, $theme, $path) {
+	return	array('acid_slider' => array('arguments' => array('images_set_1' => NULL, 'images_set_2' => NULL, 'urls' => NULL), 'function' => 'theme_acid_slider_display')); 
+}
+
+function da_acid_slider_block($op = 'list', $delta = 0, $edit = array()) {
+	switch($op) {
+		case 'list':
+			$blocks[0] = array(
+				'info' => 'Acid Slider',
+				'cache' => BLOCK_NO_CACHE
+			);
+			return $blocks;
+		case 'configure':
+			$animations = array('easeOutQuad' => 'Out Quadratic', 'easeInQuad'  => 'In Quadratic', 'easeInOutQuad'  => 'In Out Quadratic', 'easeInCubic' => 'In Cubic', 'easeOutCubic' => 'Out Cubic', 'easeInOutCubic' => 'In Out Cubic', 'easeInQuart' => 'In Quart', 'easeOutQuart' => 'Out Quart', 'easeInOutQuart' => 'In Out Quart', 'easeInQuint' => 'In Quint', 'easeOutQuint' => 'Out Quint', 'easeInOutQuint' => 'In Out Quint', 'easeInSine' => 'In Sine', 'easeOutSine' => 'Out Sine', 'easeInOutSine' => 'In Out Sine', 'easeInExpo' => 'In Expo', 'easeOutExpo' => 'Out Expo', 'easeInOutExpo' => 'In Out Expo', 'easeInCirc' => 'In Circular', 'easeOutCirc' => 'Out Circular', 'easeInOutCirc' => 'In Out Circular', 'easeInElastic' => 'In Elastic', 'easeOutElastic' => 'Out Elastic', 'easeInOutElastic' => 'In Out Elastic', 'easeInBack' => 'In Back', 'easeOutBack' => 'Out Back', 'easeInOutBack' => 'In Out Back', 'easeInBounce' => 'In Bounce', 'easeOutBounce' => 'Out Bounce', 'easeInOutBounce' => 'In Out Bounce');
+			
+			$form['node_id'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Node ID'),
+				'#description' => t('Node ID of the page containing the CCK Images.'),
+      			'#default_value' => variable_get('acid_slider_node_id', 0)
+    		);
+			$form['img_set_1_field_name'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Primary Image Set Field Name'),
+				'#description' => t('Machine-name of the field name containing the primary images.'),
+      			'#default_value' => variable_get('acid_slider_img_set_1', '')
+    		);
+			$form['img_set_2_field_name'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Secondary Image Set Field Name'),
+				'#description' => t('Machine-name of the field name containing the secondary images.'),
+      			'#default_value' => variable_get('acid_slider_img_set_2', '')
+    		);
+			$form['url_field_name'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('URL Field Name'),
+				'#description' => t('Machine-name of the field name containing the url paths.'),
+				'#default_value' => variable_get('acid_slider_url', '')
+    		);
+			$form['primary_animation'] = array(
+				'#type' => 'select',
+				'#title' => t('Primary Animation'),
+				'#description' => t('Please select the primary animation for slider.'),
+				'#default_value' => variable_get('da_acid_slider_primary_animation', 'easeInCubic'),
+				'#options' => $animations
+			);
+			$form['secondary_animation'] = array(
+				'#type' => 'select',
+				'#title' => t('Secondary Animation'),
+				'#description' => t('Please select the secondary animation for slider.'),
+				'#default_value' => variable_get('da_acid_slider_secondary_animation', 'easeInCubic'),
+				'#options' => $animations
+			);
+			$form['primary_speed'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Primary Animation Speed'),
+				'#description' => t('The amount of time in milliseconds to run the primary animation for.'),
+				'#default_value' => variable_get('acid_slider_primary_speed', '')
+    		);
+			$form['secondary_speed'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Secondary Animation Speed'),
+				'#description' => t('The amount of time in milliseconds to run the secondary animation for.'),
+				'#default_value' => variable_get('acid_slider_secondary_speed', '')
+    		);
+			$form['delay'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Slide Delay'),
+				'#description' => t('The amount of time in milliseconds to delay between slides.'),
+				'#default_value' => variable_get('acid_slider_delay', '')
+    		);
+    		return $form;
+		case 'save':
+			variable_set('acid_slider_node_id', $edit['node_id']);
+			variable_set('acid_slider_img_set_1', $edit['img_set_1_field_name']);
+			variable_set('acid_slider_img_set_2', $edit['img_set_2_field_name']);
+			variable_set('acid_slider_url', $edit['url_field_name']);
+			variable_set('da_acid_slider_primary_animation', $edit['primary_animation']);
+			variable_set('da_acid_slider_secondary_animation', $edit['secondary_animation']);
+			variable_set('acid_slider_primary_speed', $edit['primary_speed']);
+			variable_set('acid_slider_secondary_speed', $edit['secondary_speed']);
+			variable_set('acid_slider_delay', $edit['delay']);
+			break;
+		case 'view':
+			$node_id = variable_get('acid_slider_node_id', 0);
+			$primary_img_field = variable_get('acid_slider_img_set_1', '');
+			$secondary_img_field = variable_get('acid_slider_img_set_2', '');
+			$url_field = variable_get('acid_slider_url', '');
+			$primary_animation = variable_get('da_acid_slider_primary_animation', 'easeInCubic');
+			$secondary_animation = variable_get('da_acid_slider_secondary_animation', 'easeInCubic');
+			$primary_speed = variable_get('acid_slider_primary_speed', '');
+			$secondary_speed = variable_get('acid_slider_secondary_speed', '');
+			$slider_delay = variable_get('acid_slider_delay', '');
+			
+			if(!empty($node_id) && !empty($primary_img_field) && !empty($secondary_img_field) && !empty($url_field)) {
+				drupal_add_css(drupal_get_path('module','da_acid_slider').'/css/da_acid_slider.css');
+				drupal_add_js(drupal_get_path('module','da_acid_slider').'/js/jquery.easing.1.3.js');
+				drupal_add_js(drupal_get_path('module','da_acid_slider').'/js/da_acid_slider.js');
+				drupal_add_js(array('da_acid_slider' => array('primary_animation' => $primary_animation, 'secondary_animation' => $secondary_animation, 'primary_speed' => $primary_speed, 'secondary_speed' => $secondary_speed, 'slider_delay' => $slider_delay)), 'setting');
+				
+				$node = node_load($node_id);
+				$content = theme('acid_slider', $node->$primary_img_field, $node->$secondary_img_field, $node->$url_field);
+			} else {
+				$content = '';
+			}
+
+			return array('subject' => '<none>', 'content' => $content);
+	}
+}
+
+function theme_acid_slider_display($images_set_1, $images_set_2, $urls) {
+	$i = 0;
+	$content = '<div class="da_slider_container"><div class="da_slider">';
+	foreach($images_set_1 as $image) {
+		$primary_image_url = $image["filepath"];
+		if(array_key_exists($i, $urls)) {
+			$url_link = $urls[$i]["url"];
+			$url_title = $urls[$i]["title"];
+		} else {
+			$url_link = '#';
+			$url_title = '';
+		}
+		if(array_key_exists($i, $images_set_2)) {
+			$secondary_image_url = $images_set_2[$i]["filepath"];
+			$secondary_image_title = $images_set_2[$i]["data"]["title"];
+			$secondary_image_alt = $images_set_2[$i]["data"]["alt"];
+			if(!empty($secondary_image_url)) {
+				$content .= '<div class="da_element" style="background: url(\''.base_path().$primary_image_url.'\');"><div>'.l('<img src="'.base_path().$secondary_image_url.'" alt="'.$secondary_image_alt.'" title="'.$secondary_image_title.'" />', $url_link, array('html' => true, 'attributes' => array('title' => $url_title))).'</div></div>';
+			}
+		}
+		$i++;
+	}
+	$content .= '</div></div>';
+	return $content;
+}

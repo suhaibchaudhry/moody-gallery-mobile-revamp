@@ -1,0 +1,52 @@
+/*Blog Block and Featured Products Block*/
+.view-Blog, .view-Blog .views-row, .view-featured-products, .view-featured-products .views-row, .view-featured-products .views-field-nodefield  {
+	float: left;
+}
+.view-Blog .views-row {
+	margin-right: 40px;	
+}
+.view-Blog a {
+	float: left;
+	margin-bottom: 5px;
+}
+.view-Blog .views-row-last {
+	margin-right: 0;	
+}
+#block-views-Blog-block_1, #block-views-featured_products-block_1 {
+	float: left;	
+}
+#block-views-Blog-block_1 h2, #block-views-featured_products-block_1 h2 {
+	border-bottom: 1px solid #E9E9E9;
+    margin-bottom: 10px;
+    padding-bottom: 5px;
+}
+#block-views-featured_products-block_1 {
+	margin: 5px 0 0;	
+}
+
+/*Top pane Image block*/
+.top_pane .block-image{
+	margin: 0 0 15px 9px;
+}
+/*Artists Grid*/
+.view-artists, .view-artists .views-row {
+	float: left;	
+}
+.view-artists .views-field-title {
+	text-align: center;
+	margin-top: 3px;	
+}
+.view-artists .views-row {
+	margin: 0 0 15px;
+    text-align: center;
+    width: 155px;	
+}
+#block-views-artists-block_1, #block-views-artists-block_2 {
+	clear: both;
+}
+#block-views-artists-block_1 h2 {
+	margin: 0 0 10px;
+}
+#block-views-artists-block_2 h2 {
+	margin: 10px 0;	
+}

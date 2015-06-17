@@ -1,0 +1,142 @@
+<?php
+  // $Id: cck_slider.module,v 1.1 2010/12/16 22:22:56 jamesg Exp $
+
+/**
+ * @file
+ * The module file to cck_slider. This module provides a slider widget for an integer.
+ */
+
+/**
+ * Implementation of hook_widget_info().
+ */
+function cck_slider_widget_info() {
+  return array(
+    'cck_slider' => array(
+      'label' => t('Slider widget'),
+      'field types' => array('number_integer'),
+      'multiple values' => CONTENT_HANDLE_CORE,
+      'callbacks' => array(
+        'default value' => CONTENT_CALLBACK_CUSTOM,
+      ),
+    ),
+  );
+}
+
+/**
+ * Implementation of hook_widget_settings().
+ */
+function cck_slider_widget_settings($op, $widget) {
+  switch ($op) {
+    case 'form':
+      $form = array();
+      $increment_size = (isset($widget['increment_size']) && is_numeric($widget['increment_size'])) ? $widget['increment_size'] : 1;
+      $default_value = (isset($widget['slider_default_value']) && is_numeric($widget['slider_default_value'])) ? $widget['slider_default_value'] : '';
+      $form['increment_size'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Increment Size'),
+        '#default_value' => $increment_size,
+        '#element_validate' => array('_cck_slider_widget_validate_increment_size'),
+        '#required' => TRUE,
+      );
+
+      $form['slider_default_value'] = array(
+        '#type' => 'textfield',
+        '#title' => t('Default Value'),
+        '#default_value' => $default_value,
+        '#element_validate' => array('_cck_slider_widget_validate_within_maxmin'),
+        '#required' => TRUE,
+      );
+      return $form;
+    case 'save':
+      return array('slider_default_value', 'increment_size');
+  }
+}
+
+/**
+ * Validate function for the increment size field setting.
+ */
+function _cck_slider_widget_validate_increment_size($element, &$form_state) {
+  // Verify that the max - min is evenly divisible by the increment value
+  $range_total = $form_state['values']['max'] - $form_state['values']['min'];
+  if ($range_total & $form_state['values']['increment_size'] != 0) {
+    form_set_error('increment_size', t("The range between min and max must be evenly divisible by the increment size."));
+  }
+}
+
+/**
+ * Validate function for the default value field setting.
+ */
+function _cck_slider_widget_validate_within_maxmin($element, &$form_state) {
+  // Verify that the default value is between the minimum and maximum
+  if ($form_state['values']['slider_default_value'] > $form_state['values']['max'] ||
+        $form_state['values']['slider_default_value'] < $form_state['values']['min']) {
+    form_set_error('slider_default_value', t("The default value must be within the range between minimum and maximum."));
+  }
+  // Verify that the default value is appropriate with the given increment size
+  $difference = $form_state['values']['slider_default_value'] - $form_state['values']['min'];
+  if ($difference % $form_state['values']['increment_size'] != 0) {
+    form_set_error('slider_default_value', t("The default value must be selectable with the given increment size."));
+  }
+  return TRUE;
+}
+
+/**
+ * Implementation of hook_widget().
+ */
+function cck_slider_widget(&$form, &$form_state, $field, $items, $delta = 0) {
+  if (isset($form_state['post'][$field['field_name']][0]['value'])) {
+    $actualValue = $form_state['post'][$field['field_name']][0]['value'];
+    $items[$delta]['value'] = $actualValue;
+  }
+  $element['value'] = array(
+    '#type' => 'textfield',
+    '#title' => $field['widget']['label'],
+    '#description' => $field['widget']['description'],
+    '#default_value' => isset($items[$delta]) ? $items[$delta]['value'] : $field['widget']['slider_default_value'],
+    '#attributes' => array('class' => 'cck-slider-field'),
+    '#prefix' => '<div id="' . $field['field_name'] . '" class="cck-slider-wrapper">',
+    '#suffix' => '<div class="cck-slider-widget-wrapper"><div class="cck-slider-widget"></div><div class="cck-slider-widget-min"></div><div class="cck-slider-widget-max"></div></div></div>',
+  );
+  $form['#after_build'][] = 'cck_slider_widget_after_build';
+
+  // Build the settings for loading into JS
+  $field_settings = array(
+    'default' => intval($element['value']['#default_value']),
+    'min' => intval($field['min']),
+    'max' => intval($field['max']),
+    'increment_size' => intval($field['widget']['increment_size']),  
+  );
+  // Save the slider settings for reloading when form validation fails
+  $form['#slider_settings'][$field['field_name']] = $field_settings;
+  return $element;
+}
+
+
+/**
+ * After build function to add the appropriate javascript.
+ * This has to be here to allow JS loading after validation failure.
+ */
+function cck_slider_widget_after_build($form, &$form_state) {
+  // Add the JS and CSS files required to render the slider
+  $settings = $form['#slider_settings'];
+  drupal_add_js(array(
+    'cck_slider' => $settings,
+  ), 'setting');
+  jquery_ui_add(array('ui.slider'));
+  drupal_add_js(drupal_get_path('module', 'cck_slider') . '/cck_slider.js');
+  drupal_add_css(drupal_get_path('module', 'cck_slider') . '/cck_slider.css');  
+  drupal_add_css(libraries_get_path('jquery.ui') .'/themes/base/ui.all.css');
+  return $form;
+}
+
+/**
+ * Form alter to require a minimum and maximum value.
+ */
+function cck_slider_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'content_field_edit_form') {
+    if ($form['widget_module']['#value'] == 'cck_slider') {
+      $form['field']['min']['#required'] = TRUE;
+      $form['field']['max']['#required'] = TRUE;
+    }
+  }
+}

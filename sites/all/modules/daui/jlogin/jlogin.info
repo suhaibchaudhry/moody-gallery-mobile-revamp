@@ -1,0 +1,4 @@
+name = JLogin
+description = Implements a collapsible login block.
+package = D.A. UI
+core = 6.x

@@ -1,0 +1,7 @@
+name = Order Flag
+description = Allows employees to flag orders.
+package = D.A. CRM
+dependencies[] = uc_order
+dependencies[] = uc_store
+dependencies[] = order_advanced_search
+core = 6.x

@@ -1,0 +1,14 @@
+; $Id:
+name = "Simplenews Statistics"
+description = "Gathers newsletter statistics"
+dependencies[] = simplenews
+dependencies[] = mimemail
+package = Mail
+core = 6.x
+
+; Information added by drupal.org packaging script on 2011-11-11
+version = "6.x-2.2"
+core = "6.x"
+project = "simplenews_statistics"
+datestamp = "1321020936"
+

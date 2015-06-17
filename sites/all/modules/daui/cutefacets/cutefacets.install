@@ -1,0 +1,64 @@
+<?php
+function cutefacets_schema() {
+	$schema ['cutefacets_child_vocabs'] = array(
+		'description' => t('Contains a mapping of cute facet terms to child vocabularies.'),
+		'fields' => array(
+			'tid' => array(
+        		'description' => t('The term id.'),
+        		'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+      		),
+			'vid' => array(
+				'description' => t('The vocabulary id.'),
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE
+      		),
+			'pvid' => array(
+				'description' => t('The parent vocabulary id.'),
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE
+      		)
+		),
+		'indexes' => array(
+			'tid' => array('tid')
+		)
+	);
+	
+	$schema ['cutefacets_vocab_widget'] = array(
+		'description' => t('Stores the widget type to used for each cute facets filter.'),
+		'fields' => array(
+			'vid' => array(
+        		'description' => t('The vocabulary id.'),
+        		'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+      		),
+			'wtype' => array(
+				'description' => t('The vocabulary id.'),
+				'type' => 'int',
+				'size' => 'tiny',
+				'unsigned' => TRUE,
+				'not null' => TRUE
+      		)
+		),
+		'indexes' => array(
+			'cf_ind' => array('vid')
+		),
+		'unique keys' => array(
+			'cf_unq' => array('vid')
+		)
+	);
+
+	return $schema;
+}
+
+function cutefacets_install() {
+	drupal_install_schema('cutefacets');
+}
+
+function cutefacets_uninstall() {
+	drupal_uninstall_schema('cutefacets');
+}

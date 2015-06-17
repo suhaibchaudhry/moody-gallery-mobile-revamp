@@ -1,0 +1,29 @@
+<?php
+function frontpage_junk_filter($op, $delta = 0, $format = -1, $text = '', $cache_id = 0) {
+  switch ($op) {
+    case 'list':
+      return array(0 => t('Microsoft Frontpage Junk Filter'));
+
+    case 'description':
+      return t('Removes junk that is created by Microsoft Frontpage.');
+
+    case "process":
+      //$text = preg_replace('(<?xml:).*(/>)', '', $text);
+      $text = str_replace('<?xml:namespace prefix = o ns = "urn:schemas-microsoft-com:office:office" />', '', $text);
+	  return $text;
+
+    default:
+      return $text;
+  }
+}
+
+/* Actual implementation :)
+function frontpage_junk_ampersand_fix($text) {
+	$offset = 0;
+
+	while($index = strpos($text, '&', $offset)) {
+		$offset = $index;
+		
+	}
+}
+*/

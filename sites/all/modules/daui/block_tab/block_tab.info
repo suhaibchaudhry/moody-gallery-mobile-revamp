@@ -1,0 +1,10 @@
+; $Id: block_tab.info,v 1.1 2009/11/17 15:14:41 itarato Exp $
+name = Block tab
+core = 6.x
+
+; Information added by drupal.org packaging script on January 1, 1970 - 00:00
+version = "6.x-1.1"
+core = "6.x"
+project = "block_tab"
+datestamp = "1297231530"
+

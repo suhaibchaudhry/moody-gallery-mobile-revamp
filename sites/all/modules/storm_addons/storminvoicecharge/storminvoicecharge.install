@@ -1,0 +1,20 @@
+<?php
+function storminvoicecharge_requirements($phase) {
+	$requirements = array();
+	$login_id = variable_get('storminvoicecharge_api_login_id', '');
+	$transac_key = variable_get('storminvoicecharge_transac_key', '');
+	if ($phase == 'runtime' && (empty($login_id) || empty($transac_key))) {
+		$requirements['storminvoicecharge'] = array(
+			'title' => t('Storm Invoice Charge'), 
+			'description' => 'Setup Storm Invoice Charge <a href="'.base_path().'admin/settings/storm/invoicecharge">settings</a> before use.', 
+			'severity' => REQUIREMENT_ERROR
+		);
+	}
+
+	return $requirements;
+}
+
+function storminvoicecharge_uninstall() {
+	variable_del('storminvoicecharge_api_login_id');
+	variable_del('storminvoicecharge_transac_key');	
+}

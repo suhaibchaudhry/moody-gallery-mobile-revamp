@@ -1,0 +1,25 @@
+<?php
+function da_product_fields_form_alter(&$form, &$form_state, $form_id) {
+	if (isset($form['type']) && $form['type']['#value'] .'_node_form' == $form_id) {
+		if(is_array($form['base']['prices'])) {
+			drupal_add_js(drupal_get_path('module','da_product_fields').'/js/da_product_fields.js');
+			
+			$form['base']['prices']['sell_price']['#attributes'] = array('onchange' => 'da_update_prcnt_from_sell()', 'onkeyup' => 'da_update_prcnt_from_sell()');
+			
+			$form['base']['prices']['cost']['#attributes'] = $form['base']['prices']['sell_price']['#attributes'];
+			
+			$form['base']['prices']['percent_retail'] = array(
+				'#type' => 'textfield',
+				'#title' => 'Retail Profit Percentage',
+				'#required' => FALSE,
+				'#default_value' => 0,
+				'#description' => 'Percentage of markup on retail sales',
+				'#size' => 10,
+				'#maxlenght' => 35,
+				'#field_prefix' => '',
+				'#field_suffix' => '%',
+				'#attributes' => array('onchange' => 'da_update_sell_from_prcnt()', 'onkeyup' => 'da_update_sell_from_prcnt()')
+			);
+		}
+	}
+}

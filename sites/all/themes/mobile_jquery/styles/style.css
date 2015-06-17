@@ -1,0 +1,52 @@
+/* Id$ */
+.pager {text-align: center;}
+.pager .ui-btn-inner { padding: 5px 10px; }
+.region-populated { display: none; }
+
+.pager.ui-controlgroup {
+  margin-top: 25px;
+}
+.ui-select { width: auto !important; }
+
+/* media queries */
+
+@media all and (min-width: 650px) {
+  .content-secondary {
+    text-align: left;
+    float: left;
+    width: 45%;
+    background: none;
+    border-top: 0;
+    margin: 0;
+    padding: 0;
+  }
+
+  .content-primary {
+    width: 45%;
+    float: right;
+    margin: 0;
+    padding: 0;
+  }
+}
+@media all and (min-width: 750px) {
+  .content-secondary {
+    width: 34%;
+  }
+  .content-primary {
+    width: 56%;
+    padding-right: 1%;
+  }  
+}
+
+@media all and (min-width: 1200px) {
+  .content-secondary {
+    width: 30%;
+    padding-right:6%;
+    margin: 0;
+  }
+  .content-primary {
+    width: 50%;
+    margin-right: 5%;
+    padding-right: 3%;
+  }
+}

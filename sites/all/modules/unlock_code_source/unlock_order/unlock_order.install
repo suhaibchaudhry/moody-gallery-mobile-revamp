@@ -1,0 +1,141 @@
+<?php
+/**
+ * Implementation of hook_schema().
+ */
+function unlock_order_schema() {
+	$schema = array();
+
+	$schema['unlock_orders'] = array(
+		'description' => 'Unlock orders by users.',
+		'fields' => array(
+			'order_id' => array(
+				'description' => 'Order id of unlock request.',
+				'type' => 'serial',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+			),
+			'user_id' => array(
+				'description' => 'User id of customer.',
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+			),
+			'timestamp' => array(
+				'description' => 'time of the order submission.',
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+				'size' => 'big'
+			),
+			'ctimestamp' => array(
+				'description' => 'time of the order completion',
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+				'size' => 'big'
+			),
+			'tool_id' => array(
+				'description' => 'API tool id of unlock order.',
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+			),
+			'status' => array(
+				'description' => 'Current status of order.',
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'size' => 'tiny',
+				'default' => 0
+			),
+			'imei' => array(
+        		'description' => 'IMEI number of device to order unlock for.',
+        		'type' => 'varchar',
+        		'length' => 255,
+        		'default' => ''
+			),
+			'cost' => array(
+				'description' => 'Cost in terms of credits of order from API.',
+				'type' => 'float',
+				'unsigned' => TRUE,
+				'default' => 0,
+			),
+			'price' => array(
+				'description' => 'Price paid by user in terms of credits.',
+				'type' => 'float',
+				'unsigned' => TRUE,
+				'default' => 0,
+			),
+			'make' => array(
+        		'description' => 'Device make of the ordered unlock code.',
+        		'type' => 'varchar',
+        		'length' => 255,
+        		'default' => ''
+			),
+			'model' => array(
+        		'description' => 'Device model of the ordered unlock code.',
+        		'type' => 'varchar',
+        		'length' => 128,
+        		'default' => ''
+			),
+			'cust_email' => array(
+        		'description' => 'Device model of the ordered unlock code.',
+        		'type' => 'varchar',
+        		'length' => 255,
+        		'default' => ''
+			),
+			'notes' => array(
+				'description' => 'Customer order notes.',
+				'type' => 'text',
+				'size' => 'big'
+			),
+			'remote_order_id' => array(
+				'description' => 'Remote order id returned by the API',
+				'type' => 'varchar',
+				'length' => 255,
+				'default' => ''
+			),
+			'code' => array(
+        		'description' => 'Recieved unlock code.',
+        		'type' => 'varchar',
+        		'length' => 255,
+        		'default' => ''
+			),
+		),
+		'indexes' => array(
+			'order_id' => array('order_id'),
+    	),
+    	'primary key' => array('order_id'),
+	);
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function unlock_order_install() {
+  drupal_install_schema('unlock_order');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function unlock_order_uninstall() {
+  drupal_uninstall_schema('unlock_order');
+}
+
+function unlock_order_update_1() {
+  $items = array();
+  $items[] = update_sql("ALTER TABLE {unlock_orders} ADD timestamp BIGINT UNSIGNED NOT NULL");
+  return $items;
+}
+function unlock_order_update_2() {
+  $items = array();
+  $items[] = update_sql("ALTER TABLE {unlock_orders} ADD ctimestamp BIGINT UNSIGNED NOT NULL");
+  return $items;
+}

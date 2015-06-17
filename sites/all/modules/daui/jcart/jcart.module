@@ -1,0 +1,178 @@
+<?php
+function jcart_enable() {
+	$imagecachepreset = imagecache_preset_save(array('presetname' => 'jcart-product'));
+	// Action
+	$imagecacheaction = new stdClass ();
+	$imagecacheaction->presetid = $imagecachepreset['presetid'];
+	$imagecacheaction->module = 'imagecache';
+	$imagecacheaction->action = 'imagecache_scale';
+	$imagecacheaction->data = array('width' => '200');
+	drupal_write_record('imagecache_action', $imagecacheaction);
+}
+
+function jcart_disable() {
+	imagecache_preset_delete(imagecache_preset_by_name('jcart-product'));
+}
+
+function jcart_menu() {
+	$urls = array();
+	
+	$urls['jcart-callback'] = array (
+		"title" => 'JCart Webservice', 
+    	"description" => 'Provides a xhtml webservice to carts on cached pages.',
+		"page callback" => 'jcart_ajax_callback',
+		"access arguments" => array("access content"),
+		"type" => MENU_CALLBACK
+	);
+	
+	$urls['jcart-numberofitems'] = array (
+		"title" => 'JCart Webservice', 
+    	"description" => 'Provides a webservice that returns the number of items in a cart',
+		"page callback" => 'jcart_ajax_numberofitems',
+		"access arguments" => array("access content"),
+		"type" => MENU_CALLBACK
+	);
+	
+	return $urls;
+}
+
+function jcart_ajax_callback() {
+	$items = uc_cart_get_contents();
+	print theme('jcart_items', $items);	
+}
+
+function jcart_ajax_numberofitems() {
+	$item_count = 0;
+	$items = uc_cart_get_contents();
+	foreach($items as $item) {
+		$item_count += $item->qty;
+	}
+	
+	print '('.$item_count.')';
+}
+
+function jcart_block($op = 'list', $delta = 0, $edit = array()) {
+	if($op == 'list') {
+		$blocks[0] = array(
+			'info' => t('JCart'), 
+			'cache' => BLOCK_NO_CACHE
+		);
+
+		return $blocks;
+	} elseif($op == 'configure') {
+		$form['link_text'] = array(
+			'#type' => 'textfield', 
+			'#title' => t('Cart Link Text'), 
+			'#default_value' => variable_get('jcart_link_text', 'Shopping Cart'), 
+		);
+		$form['empty_text'] = array(
+			'#type' => 'textfield', 
+			'#title' => t('Empty Cart Message'), 
+			'#default_value' => variable_get('jcart_empty_message', 'There are no items in your shopping cart.'), 
+		);
+
+		return $form;
+	} elseif($op == 'save') {
+		variable_set('jcart_link_text', $edit['link_text']);
+		variable_set('jcart_empty_message', $edit['empty_text']);
+	} elseif($op == 'view') {
+		global $user;
+		
+		$block = array();
+		$block['content'] = theme('jcart_link', t(variable_get('jcart_link_text', 'Shopping Cart')), 'jcart-callback');
+		return $block;
+	}
+}
+
+function jcart_theme($existing, $type, $theme, $path) {
+	return array(
+		'jcart_link' => array(
+			'arguments' => array('link_text' => NULL, 'link_path' => NULL),
+			'function' => 'theme_jcart_link'
+		),
+		'jcart_items' => array(
+      		'arguments' => array('items' => NULL),
+			'function' => 'theme_jcart_items'
+		),
+		'jcart_render_products' => array(
+      		'arguments' => array('product_elements' => NULL, 'odd_flag' => NULL),
+			'function' => 'theme_jcart_render_products'
+		),
+	);
+}
+
+function theme_jcart_link($link_text, $link_path) {
+	drupal_add_css(drupal_get_path('module', 'jcart').'/css/jcart.css');
+	drupal_add_js(drupal_get_path('module', 'jcart').'/js/jcart.js');
+	
+	$content = '<div class="jcart-link">';
+	if($link_path == '#') {
+		$content .= '<a href="#">'.$link_text.'</a>';
+	} else {
+		$content .= l($link_text, $link_path);	
+	}
+	$content .= '</div>';
+	$content .= '<div class="jcart-window">';
+	$content .= '<div class="jcart-preloader"></div>';
+	return $content .= '</div>';
+}
+
+function theme_jcart_items($items) {
+	$content = '';
+	$products_markup = '';
+	$item_count = 0;
+	$total = 0;
+	$i = 1;
+
+	foreach($items as $item) {
+		$display_item = module_invoke($item->module, 'cart_display', $item);
+		
+		if (!empty($display_item)) {
+			$node = node_load($display_item['nid']['#value']);
+			$main_image = $node->field_image_cache[0];
+			
+			$product_elements = array(
+				'nid' => $display_item['nid']['#value'],
+				'image' => $main_image,
+				'qty' => t('&times;@qty', array('@qty' => $display_item['qty']['#default_value'])),
+				'title' => $display_item['title']['#value'],
+				'price' => $display_item['#total'],
+				'desc' => isset($display_item['description']['#value']) ? $display_item['description']['#value'] : FALSE,
+			);
+		}
+		
+		$item_count += $item->qty;
+		$total += $display_item['#total'];
+
+		$products_markup .= theme('jcart_render_products', $product_elements, ((bool)($i%2)));
+		$i++;
+	}
+	if($item_count == 0) {
+		$content .= '<div class="jcart-close"><a href="#">Close</a></div>';
+		$content .= '<p class="empty-message">'.variable_get('jcart_empty_message', 'There are no items in your shopping cart.').'</p>';	
+	} else {
+		$content .= '<div class="jcart-close"><p>There '.($item_count > 1 ? 'are' : 'is').' '.$item_count.' item'.($item_count > 1 ? 's' : '').' in your '.variable_get('jcart_link_text', 'Shopping Cart').'.</p><a href="#">Close</a></div>';
+		$content .= $products_markup;
+		$content .= '<div class="jcart-subtotal"><p class="subtotal"><strong>Subtotal: </strong>$'.$total.'</p><p class="jcheckout">'.l('checkout', 'cart/checkout').'</p><p class="view-cart">'.l('View '.variable_get('jcart_link_text', 'Shopping Cart'), 'cart').'</p></div>';	
+	}
+	return $content;
+}
+
+function theme_jcart_render_products($product_elements, $odd_flag) {
+	$context = array(
+		'revision' => 'themed',
+		'type' => 'price',
+	);
+
+	$color_class = $odd_flag ? 'jcodd' : 'jceven';
+	if(empty($product_elements['image']['filepath'])) {
+		$product_elements['image']['filepath'] = 'notfound_jcart.png';
+	}
+	$content = '<div class="jcart-item '.$color_class.'">';
+	$content .= '<div class="title">'.$product_elements['title'].'</div>';
+	$content .= '<div class="image">'.l(theme('imagecache', 'uc_thumbnail', $product_elements['image']['filepath'], 'Product Image', 'Buy '.$product_elements['title']), 'node/'.$product_elements['nid'], array('html' => true)).'</div>';
+	$content .= '<div class="qty">'.$product_elements['qty'].'</div>';
+	$content .= '<div class="price">'.uc_price($product_elements['price'], $context).'</div>';
+	$content .= '</div>';
+	return $content;
+}

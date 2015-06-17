@@ -1,0 +1,12 @@
+name = Contact fields
+description = Add custom fields to site wide contact form
+package = Contact fields
+core = 6.x
+dependencies[] = contact
+
+; Information added by Drupal.org packaging script on 2015-01-14
+version = "6.x-2.3"
+core = "6.x"
+project = "contact_field"
+datestamp = "1421243806"
+

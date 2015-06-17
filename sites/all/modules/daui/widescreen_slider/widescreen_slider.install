@@ -1,0 +1,11 @@
+<?php
+function widescreen_slider_uninstall() {
+	variable_del('widescreen_slider_node_id');
+	variable_del('widescreen_slider_img_set');
+	variable_del('widescreen_slider_url');
+	variable_del('widescreen_slider_animation');
+	variable_del('widescreen_slider_speed');
+	variable_del('widescreen_slider_width');
+	variable_del('widescreen_slider_height');
+	variable_del('widescreen_slider_delay');
+}

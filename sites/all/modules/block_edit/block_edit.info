@@ -1,0 +1,10 @@
+name = Block edit links
+description = "Adds edit links to blocks to make block administration easier."
+core = 6.x
+
+; Information added by drupal.org packaging script on 2011-12-27
+version = "6.x-1.11"
+core = "6.x"
+project = "block_edit"
+datestamp = "1325019637"
+

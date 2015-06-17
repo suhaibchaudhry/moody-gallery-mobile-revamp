@@ -1,0 +1,20 @@
+#crm-rma-request-form fieldset {
+	margin: 10px 0 0;
+}
+#crm-rma-request-form .form-checkboxes, #crm-rma-request-form .form-radios, #crm-rma-request-form .form-radios .form-item {
+	margin: 0;
+	padding: 0;	
+}
+#crm-rma-request-form .form-radios .form-item{
+	float: left;
+	margin: 10px 7px;
+}
+#crm-rma-request-form .form-item label {
+	clear: both;
+}
+.uc-request-table {
+	width: 100%;
+}
+.uc-request-table td{
+	margin: 3px 0 0;
+}

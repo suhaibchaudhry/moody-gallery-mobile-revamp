@@ -1,0 +1,4 @@
+name = "External Links"
+description = "Adds Javascripts to open links with rel='external' open in new windows/tabs. Please be sure to configure htmlpurifier accordingly."
+package = D.A. Custom Modules
+core = 6.x

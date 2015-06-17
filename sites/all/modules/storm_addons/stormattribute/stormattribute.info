@@ -1,0 +1,16 @@
+
+; Basic information
+name = Storm Attribute
+description = "Provides attributes (allowed field values) for use within Storm modules"
+core = 6.x
+package = Storm
+
+; Dependencies
+dependencies[] = storm
+
+; Information added by drupal.org packaging script on 2012-01-12
+version = "6.x-2.x-dev"
+core = "6.x"
+project = "storm"
+datestamp = "1326329387"
+

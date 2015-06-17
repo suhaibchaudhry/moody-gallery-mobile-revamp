@@ -1,0 +1,96 @@
+<?php
+// $Id: contact_redirect.module,v 1.2 2009/03/26 18:26:02 textplease Exp $
+
+/**
+ * @file
+ * Adds redirect option to contact module 
+ *
+ * Modifies the contact module by adding the ability to redirect users
+ * to another page after submitting site-wide contact forms.
+ */
+
+
+/**
+ * Implementation of hook_form_alter().
+ * Add the redirect functionality
+ */
+function contact_redirect_form_alter(&$form, &$form_state, $form_id) {
+  switch ($form_id) {
+    case 'contact_admin_edit':
+            
+      //move the category higher
+      $form['category']['#weight'] = -2;
+      
+      //create redirect and move under category
+      $form['redirect'] = array('#type' => 'textfield',
+        '#title' => t('Redirect'),
+        '#default_value' => check_plain(contact_redirect_get($form['cid']['#value'])),
+        '#description' => t('Optional page to redirect after submission. e.g node/3. Leave empty to send them to the home page.'),
+        '#weight' => -1,
+      );
+      
+      //switch submit function to our own custom version that adds redirect
+      //not sure if there is a better way to do this.
+      unset($form['#submit']);
+      $form['#submit'][] = 'contact_redirect_contact_admin_edit_submit';
+    break;
+    
+    case 'contact_mail_page':
+      $form['#submit'][] = 'contact_redirect'; // Add a submit function that alters the redirect value
+      break;
+  }
+  
+}
+
+/**
+ * Process the contact category edit page form submission.
+ * Custom version of contact_admin_edit_submit that adds redirect.
+ */
+function contact_redirect_contact_admin_edit_submit($form, &$form_state) {
+  
+  if ($form_state['values']['selected']) {
+    // Unselect all other contact categories.
+    db_query('UPDATE {contact} SET selected = 0');
+  }
+  $recipients = explode(',', $form_state['values']['recipients']);
+  foreach ($recipients as $key => $recipient) {
+    // E-mail address validation has already been done in _validate.
+    $recipients[$key] = trim($recipient);
+  }
+  $form_state['values']['recipients'] = implode(',', $recipients);
+  if (arg(3) == 'add') {
+    db_query("INSERT INTO {contact} (category, recipients, reply, redirect, weight, selected) VALUES ('%s', '%s', '%s', '%s', %d, %d)", $form_state['values']['category'], $form_state['values']['recipients'], $form_state['values']['reply'], $form_state['values']['redirect'], $form_state['values']['weight'], $form_state['values']['selected']);
+    drupal_set_message(t('Category %category has been added.', array('%category' => $form_state['values']['category'])));
+    watchdog('mail', 'Contact form: category %category added.', array('%category' => $form_state['values']['category']), WATCHDOG_NOTICE, l(t('view'), 'admin/build/contact'));
+
+  }
+  else {
+    db_query("UPDATE {contact} SET category = '%s', recipients = '%s', reply = '%s', redirect = '%s', weight = %d, selected = %d WHERE cid = %d", $form_state['values']['category'], $form_state['values']['recipients'], $form_state['values']['reply'], $form_state['values']['redirect'], $form_state['values']['weight'], $form_state['values']['selected'], $form_state['values']['cid']);
+    drupal_set_message(t('Category %category has been updated.', array('%category' => $form_state['values']['category'])));
+    watchdog('mail', 'Contact form: category %category updated.', array('%category' => $form_state['values']['category']), WATCHDOG_NOTICE, l(t('view'), 'admin/build/contact'));
+  }
+
+  $form_state['redirect'] = 'admin/build/contact';
+}
+
+/**
+ * get the contact redirect for a particular contact category
+ */
+function contact_redirect_get($cid = FALSE) {
+  if ($cid) {
+    $redirect = db_result(db_query("SELECT redirect FROM {contact} WHERE cid = %d", $cid));           
+  }
+  else {
+    $redirect = '';
+  }
+  return $redirect;
+}
+
+/**
+ * Redirect the form
+ */
+function contact_redirect($form, &$form_state) {
+  if (isset($form_state['values']['cid']) && !empty($form_state['values']['cid'])) {
+    $form_state['redirect'] = contact_redirect_get($form_state['values']['cid']);
+  }
+}

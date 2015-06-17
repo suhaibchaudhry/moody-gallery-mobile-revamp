@@ -1,0 +1,19 @@
+<?php
+// $Id: contact_redirect.install,v 1.2 2009/03/26 18:26:02 textplease Exp $
+
+/**
+ * @file
+ * contat_redirect install file.
+ *
+ * Adds a column to the {contact} table to allow for contact forms 
+ * to redirect users after submission.
+ */
+
+/**
+ * Implementation of hook_install().
+ */
+function contact_redirect_install() {
+  $ret = NULL;
+  db_add_field($ret, 'contact', 'redirect', array('type' => 'varchar', 'length' => 255));
+  return $ret;
+}

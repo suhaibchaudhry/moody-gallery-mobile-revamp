@@ -1,0 +1,71 @@
+<?php
+function jlogin_block($op = 'list', $delta = 0, $edit = array()) {
+	if($op == 'list') {
+		$blocks[0] = array(
+			'info' => t('JLogin'), 
+			'cache' => BLOCK_NO_CACHE
+		);
+
+		return $blocks;
+	} elseif($op == 'configure') {
+		$form['login_text'] = array(
+			'#type' => 'textfield',
+			'#title' => t('Login Text'),
+			'#default_value' => variable_get('jlogin_lit', ''),
+		);
+		$form['myaccount_text'] = array(
+			'#type' => 'textfield',
+			'#title' => t('My Account Text'),
+			'#default_value' => variable_get('jlogin_mat', ''),
+		);
+		$form['logout_text'] = array(
+			'#type' => 'textfield',
+			'#title' => t('Logout Text'),
+			'#default_value' => variable_get('jlogin_lot', ''),
+		);
+		return $form;
+	} elseif($op == 'save') {
+		variable_set('jlogin_lit', $edit['login_text']);
+		variable_set('jlogin_mat', $edit['myaccount_text']);
+		variable_set('jlogin_lot', $edit['logout_text']);
+	} elseif($op == 'view') {
+		global $user;
+		
+		$block = array();
+		if (!$user->uid) {
+			$block['content'] = theme('jlogin_link', variable_get('jlogin_lit', ''), '#').theme('jlogin_block', drupal_get_form('user_login_block'));
+		} else {
+			$block['content'] = theme('jlogin_link', variable_get('jlogin_mat', ''), 'user');
+			$block['content'] .= theme('jlogin_link', variable_get('jlogin_lot', ''), 'logout');
+		}
+		return $block;
+	}
+}
+
+function jlogin_theme($existing, $type, $theme, $path) {
+	return array(
+		'jlogin_block' => array(
+			'arguments' => array('form' => NULL),
+			'template' => 'jlogin_block'
+		),
+		'jlogin_link' => array(
+			'arguments' => array('link_text' => NULL, 'link_path' => NULL),
+			'function' => 'theme_jlogin_link'
+		)
+	);
+}
+
+function theme_jlogin_link($link_text, $link_path) {
+	$content = '<div class="jlogin-link">';
+	if($link_path == '#') {
+		$content .= '<a href="#">'.$link_text.'</a>';
+	} else {
+		$content .= l($link_text, $link_path);	
+	}
+	return $content .= '</div>';
+}
+
+function template_preprocess_jlogin_block(&$variables) {
+	drupal_add_css(drupal_get_path('module', 'jlogin').'/css/jlogin_block.css');	
+	drupal_add_js(drupal_get_path('module', 'jlogin').'/js/jlogin_block.js');	
+}

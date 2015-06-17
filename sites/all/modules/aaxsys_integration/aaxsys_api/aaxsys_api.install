@@ -1,0 +1,5 @@
+<?php
+function aaxsys_api_uninstall() {
+	variable_del('aaxsys_api_property_imgcache');
+	variable_del('aaxsys_api_vendor');
+}

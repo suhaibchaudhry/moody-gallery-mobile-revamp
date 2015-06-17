@@ -1,0 +1,34 @@
+.dropdown {
+	float: left;
+	margin: 0 34px 0 0;
+}
+.filterformwrapper {
+	width: 750px;
+	float: left;	
+}
+/*
+#dropdown-perpage {
+	width: 55px;	
+}
+#dropdown-sortby {
+	margin:0 0 0 81px;
+	width:164px;	
+}
+*/
+.fullcollapsed {
+	float: left;
+	width: 750px;
+}
+.grid-checkbox {
+	float: left;
+	width: 243px;
+}
+#checklist-23 .form-item {
+	padding: 0;
+	margin: 0;
+}
+#apply_filters {
+	float: left;
+	width: 750px;
+	text-align:right;
+}

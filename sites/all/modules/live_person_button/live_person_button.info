@@ -1,0 +1,5 @@
+name = "Live Person Button"
+description = Implements a block that displays a customizable live person button.
+package = D.A. Custom Modules
+dependencies[] = live_person
+core = 6.x

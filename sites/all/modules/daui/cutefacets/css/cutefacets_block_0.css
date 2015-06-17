@@ -1,0 +1,41 @@
+.block-cutefacets .facet-option {
+	display: block;	
+}
+.block-cutefacets a.facet-option {
+	color: #000;	
+}
+
+.block-cutefacets a.facet-option span {
+	display: inline-block;
+}
+
+.block-cutefacets a.facet-option span.checked {
+	width: 13px;
+	height: 13px;
+	background: url(../images/checkbox.png);
+	margin-right: 8px;
+}
+
+.block-cutefacets a.facet-option span.tximg {
+	width: 22px;
+	height: 22px;
+}
+
+.block-cutefacets a.checked-option {
+	font-weight: bold;	
+}
+.block-cutefacets a.checked-option span.checked {
+	background-position: -13px 0;
+}
+.block-cutefacets .cutefacets-secondary-facets .facet {
+	display: none;
+}
+.view-filters {
+	display: none;
+}
+.cutefacets-loader {
+	width: 	64px;
+	height: 64px;
+	background: url(../images/loader.gif);
+	margin: 0 auto;
+}

@@ -1,0 +1,142 @@
+<?php
+/**
+ * Implementation of hook_schema().
+ */
+function da_user_credits_schema() {
+	$schema = array();
+
+	$schema['da_user_credits'] = array(
+		'description' => 'Store credits for users.',
+		'fields' => array(
+			'uid' => array(
+				'description' => 'user id of user.',
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+			),
+			'credit' => array(
+				'description' => 'credit balance for user.',
+				'type' => 'float',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+			),
+		),
+		'indexes' => array(
+			'uid' => array('uid'),
+    	),
+    	'primary key' => array('uid'),
+	);
+	
+	$schema['da_ipn_responses'] = array(
+		'description' => 'Stores responses from the PayPal IPN notification server.',
+		'fields' => array(
+			'transaction_id' => array(
+				'description' => 'Serial local transaction id.',
+				'type' => 'serial',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+			),
+			'timestamp' => array(
+				'description' => 'time of the order submission.',
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+				'size' => 'big'
+			),
+			'paypal_txn_id' => array(
+				'description' => 'Remote transaction id from paypal.',
+				'type' => 'varchar',
+        		'length' => 255,
+        		'default' => ''
+			),
+			'status' => array(
+				'description' => 'Stores status of the submitted transaction.',
+				'type' => 'varchar',
+        		'length' => 20,
+        		'default' => ''
+			),
+			'customer_uid' => array(
+				'description' => 'User id of customer.',
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+			),
+			'payer_email' => array(
+				'description' => 'PayPal Email of customer.',
+				'type' => 'varchar',
+        		'length' => 255,
+        		'default' => ''
+			),
+			'first_name' => array(
+				'description' => 'First name of customer.',
+				'type' => 'varchar',
+        		'length' => 255,
+        		'default' => ''
+			),
+			'last_name' => array(
+				'description' => 'Last name of customer.',
+				'type' => 'varchar',
+        		'length' => 255,
+        		'default' => ''
+			),
+			'total_payment' => array(
+				'description' => 'Total payment paid by the customer.',
+				'type' => 'float',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+			),
+			'credits' => array(
+				'description' => 'credit balance for user.',
+				'type' => 'float',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+			),
+			'service_fee' => array(
+				'description' => 'Service fee charged by the system.',
+				'type' => 'float',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+			),
+			'paypal_fee' => array(
+				'description' => 'Service fee charged by PayPal.',
+				'type' => 'float',
+				'unsigned' => TRUE,
+				'not null' => TRUE,
+				'default' => 0,
+			),
+		),
+		'indexes' => array(
+			'uid' => array('transaction_id'),
+    	),
+    	'primary key' => array('transaction_id'),
+	);
+
+  return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function da_user_credits_install() {
+  drupal_install_schema('da_user_credits');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function da_user_credits_uninstall() {
+  drupal_uninstall_schema('da_user_credits');
+}
+
+function da_user_credits_update_1() {
+  $items = array();
+  $items[] = update_sql("ALTER TABLE {da_ipn_responses} ADD timestamp BIGINT UNSIGNED NOT NULL");
+  return $items;
+}

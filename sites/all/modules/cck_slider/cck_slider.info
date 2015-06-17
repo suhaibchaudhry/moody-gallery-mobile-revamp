@@ -1,0 +1,23 @@
+; $Id: cck_slider.info,v 1.1 2010/12/16 22:22:56 jamesg Exp $
+name = Number Slider
+description = A slider widget for a number field.
+dependencies[] = content
+dependencies[] = number
+dependencies[] = jquery_ui
+dependencies[] = jquery_update
+dependencies[] = libraries
+package = CCK
+core = 6.x
+; Information added by drupal.org packaging script on 2010-12-28
+version = "6.x-1.1"
+core = "6.x"
+project = "cck_slider"
+datestamp = "1293578761"
+
+
+; Information added by Drupal.org packaging script on 2014-03-05
+version = "6.x-2.0"
+core = "6.x"
+project = "cck_slider"
+datestamp = "1393980208"
+

@@ -1,0 +1,101 @@
+.invoice-loader {
+	width: 32px;
+	height: 32px;
+	background: url(../images/loader.gif) no-repeat;
+	display: none;
+	margin: 0 auto;
+}
+
+.stormchargeinvoice {
+	margin: 17px 0 0;
+}
+
+.invoice-results .not-found, .payment-form .payment-error {
+	background: #FFF2F2;
+	border: 1px solid #C00;
+	color: #B20000;
+	padding: 10px;	
+}
+.payment-form .payment-error p, .payment-form .payment-success p {
+	margin: 0;
+}
+.payment-form .payment-error, .payment-form .payment-success {
+	margin: 10px 0 0;	
+}
+.payment-form .payment-success {
+	background-color: #EAF8E4;
+	border: 1px solid #B1CAA6;
+	color: #3E642F;
+	padding: 10px;
+}
+.payment-form .form-item, .payment-form .form-submit {
+	float: left;
+	margin: 12px 0 0;	
+}
+#edit-ccnumber-wrapper, #edit-expiration-month-wrapper, #edit-expiration-month-wrapper, #edit-cvv-wrapper, .payment-form .form-submit {
+	clear: both;
+	margin: 12px 0 0;
+}
+#edit-expiration-year-wrapper {
+	margin: 29px 0 0 6px;
+}
+#edit-last-name-wrapper {
+	margin-left: 18px;	
+}
+.invoice-results .payment-form {
+	float: left;
+	width: 100%;
+}
+.invoice-results .payment-form h2 {
+	margin: 20px 0 5px	
+}
+.invoice-information {
+	float: left;
+	background: #f0f0f0;
+	padding: 10px;	
+	border: 1px solid #E7E7E7;
+}
+.invoice-information span.invoice-label {
+	font-weight: bold;
+	width: 90px;
+	float: left;
+}
+
+.invoice-information .lpanel {
+	float: left;
+	width: 440px;
+}
+
+.invoice-information .rpanel {
+	float: left;
+	width: 170px;
+}
+.invoice-information .invoice-paid {
+	font-weight: bold;
+	color: #139401;
+}
+.invoice-information a.view-invoice-button {
+	background: #EE6609;
+	display: block;
+	text-align: center;
+	color: white;
+	padding: 3px;
+	width: 95px;
+	border: 1px solid #C9C9C9;
+	font-weight: bold;
+	font-size: 10px;
+	-webkit-transition: background .5s ease-in-out;
+	-moz-transition: background .5s ease-in-out;
+	-ms-transition: background .5s ease-in-out;
+	-o-transition: background .5s ease-in-out;
+	transition: background .5s ease-in-out;
+}
+.invoice-information a.view-invoice-button:hover {
+	background: #D65700;
+}
+.javascript-disabled {
+	font-weight: bold;	
+}
+.javascript-enabled {
+	display: none;	
+}

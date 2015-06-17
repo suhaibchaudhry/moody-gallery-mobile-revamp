@@ -1,0 +1,4 @@
+name = PreCharge
+description = Allows one click validation for suspected fraud orders using the PreCharge API.
+package = D.A. Custom Modules
+core = 6.x

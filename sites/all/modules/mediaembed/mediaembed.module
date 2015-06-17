@@ -1,0 +1,16 @@
+<?php
+function mediaembed_wysiwyg_plugin($editor, $version) {
+  switch ($editor) {
+   case 'ckeditor':
+      return array(
+        'MediaEmbed' => array(
+         'buttons' => array(
+             'MediaEmbed' => t('Media Embed'),
+           ),
+       'path' => drupal_get_path('module', 'mediaembed') . '/plugin/',
+          'url' => 'http://www.fluidbyte.net/index.php?view=embed-youtube-vimeo-etc-into-ckeditor',
+          'load' => TRUE,
+        ),
+      );
+  }
+}

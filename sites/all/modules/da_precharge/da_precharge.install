@@ -1,0 +1,78 @@
+<?php
+function da_precharge_schema() {
+	$schema = array();
+	$schema['precharge_cc'] = array(
+		'description' => 'Stores supplementary cc data for fraud detection.',
+		'primary key' => array('order_id'),
+		'fields' => array(
+			'order_id' => array(
+				'description' => 'Primary key: the order ID.', 
+				'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+			),
+			'cc_data' => array(
+				'description' => 'The AES encrypted cc number.',
+				'type' => 'varchar',
+				'length' => 60,
+				'not null' => TRUE
+			),
+			'ip_address' => array(
+				'description' => 'User IP address.',
+				'type' => 'varchar',
+				'length' => 50,
+				'not null' => TRUE
+			)
+		)
+	);
+	
+	$schema['precharge_response'] = array(
+		'description' => 'Records responses from the preCharge API.',
+		'primary key' => array('order_id'),
+		'fields' => array(
+			'order_id' => array(
+				'description' => 'Primary key: the order ID.', 
+				'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+			),
+			'response_code' => array(
+				'description' => 'One decimal digit response code.',
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'size' => 'tiny',
+				'not null' => TRUE
+			),
+			'score' => array(
+				'description' => 'preCharge Fraud Score.',
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'size' => 'small',
+				'not null' => TRUE
+			),
+			'transaction_id' => array(
+				'description' => 'preCharge unique transaction ID.',
+				'type' => 'varchar',
+				'length' => 20,
+				'not null' => TRUE
+			),
+			'error_code' => array(
+				'description' => 'preCharge request error code.',
+				'type' => 'int',
+				'unsigned' => TRUE,
+				'size' => 'small',
+				'not null' => TRUE
+			)
+		)
+	);
+	
+	return $schema;
+}
+
+function da_precharge_install() {
+  drupal_install_schema('da_precharge');
+}
+
+function da_precharge_uninstall() {
+  drupal_uninstall_schema('da_precharge');
+}

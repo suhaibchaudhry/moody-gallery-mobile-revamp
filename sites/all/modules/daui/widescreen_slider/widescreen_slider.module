@@ -1,0 +1,124 @@
+<?php
+function widescreen_slider_theme($existing, $type, $theme, $path) {
+	return	array('widescreen_slider' => array('arguments' => array('images_set' => NULL, 'urls' => NULL, 'node' => NULL), 'function' => 'theme_widescreen_slider_display')); 
+}
+
+function widescreen_slider_block($op = 'list', $delta = 0, $edit = array()) {
+	switch($op) {
+		case 'list':
+			$blocks[0] = array(
+				'info' => 'Wide Screen Slider',
+				'cache' => BLOCK_NO_CACHE
+			);
+			return $blocks;
+		case 'configure':
+			$animations = array('easeOutQuad' => 'Out Quadratic', 'easeInQuad'  => 'In Quadratic', 'easeInOutQuad'  => 'In Out Quadratic', 'easeInCubic' => 'In Cubic', 'easeOutCubic' => 'Out Cubic', 'easeInOutCubic' => 'In Out Cubic', 'easeInQuart' => 'In Quart', 'easeOutQuart' => 'Out Quart', 'easeInOutQuart' => 'In Out Quart', 'easeInQuint' => 'In Quint', 'easeOutQuint' => 'Out Quint', 'easeInOutQuint' => 'In Out Quint', 'easeInSine' => 'In Sine', 'easeOutSine' => 'Out Sine', 'easeInOutSine' => 'In Out Sine', 'easeInExpo' => 'In Expo', 'easeOutExpo' => 'Out Expo', 'easeInOutExpo' => 'In Out Expo', 'easeInCirc' => 'In Circular', 'easeOutCirc' => 'Out Circular', 'easeInOutCirc' => 'In Out Circular', 'easeInElastic' => 'In Elastic', 'easeOutElastic' => 'Out Elastic', 'easeInOutElastic' => 'In Out Elastic', 'easeInBack' => 'In Back', 'easeOutBack' => 'Out Back', 'easeInOutBack' => 'In Out Back', 'easeInBounce' => 'In Bounce', 'easeOutBounce' => 'Out Bounce', 'easeInOutBounce' => 'In Out Bounce');
+			
+			$form['node_id'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Node ID'),
+				'#description' => t('Node ID of the page containing the CCK Images.'),
+      			'#default_value' => variable_get('widescreen_slider_node_id', 0)
+    		);
+			$form['img_set_field_name'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Images Field Name'),
+				'#description' => t('Machine-name of the CCK field name containing the images.'),
+      			'#default_value' => variable_get('widescreen_slider_img_set', '')
+    		);
+			$form['url_field_name'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('URL Field Name'),
+				'#description' => t('Machine-name of the CCK field name containing the url paths.'),
+				'#default_value' => variable_get('widescreen_slider_url', '')
+    		);
+			$form['slider_animation'] = array(
+				'#type' => 'select',
+				'#title' => t('Animation'),
+				'#description' => t('Please select the primary animation for slider.'),
+				'#default_value' => variable_get('widescreen_slider_animation', 'easeInCubic'),
+				'#options' => $animations
+			);
+			$form['slider_speed'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Animation Speed'),
+				'#description' => t('The amount of time in milliseconds to run the primary animation for.'),
+				'#default_value' => variable_get('widescreen_slider_speed', '')
+    		);
+			$form['slider_delay'] = array(
+      			'#type' => 'textfield',
+      			'#title' => t('Slide Delay'),
+				'#description' => t('The amount of time in milliseconds to delay between slides.'),
+				'#default_value' => variable_get('widescreen_slider_delay', '')
+    		);
+    		return $form;
+		case 'save':
+			variable_set('widescreen_slider_node_id', $edit['node_id']);
+			variable_set('widescreen_slider_img_set', $edit['img_set_field_name']);
+			variable_set('widescreen_slider_url', $edit['url_field_name']);
+			variable_set('widescreen_slider_animation', $edit['slider_animation']);
+			variable_set('widescreen_slider_speed', $edit['slider_speed']);
+			variable_set('widescreen_slider_delay', $edit['slider_delay']);
+			
+			break;
+		case 'view':
+			//Change jquery version
+			if(function_exists('jquery_update_change_path')) {
+				jquery_update_change_path(drupal_get_path('module', 'widescreen_slider') .'/js');
+			} else {
+				drupal_set_message('A hacked version of JQuery Update for DAUI is required for proper functionality.', 'error');	
+			}
+			
+			$node_id = variable_get('widescreen_slider_node_id', 0);
+			$img_set_field = variable_get('widescreen_slider_img_set', '');
+			$url_field = variable_get('widescreen_slider_url', '');
+			$animation = variable_get('widescreen_slider_animation', 'easeOutQuart');
+			$speed = variable_get('widescreen_slider_speed', 1500);
+			$delay = variable_get('widescreen_slider_delay', 300);
+			
+			if(!empty($node_id) && !empty($img_set_field)  && !empty($url_field)) {
+				drupal_add_css(drupal_get_path('module','widescreen_slider').'/css/widescreen_slider.css');
+				drupal_add_js(drupal_get_path('module','widescreen_slider').'/js/jquery.easing.1.3.js');
+				drupal_add_js(drupal_get_path('module','widescreen_slider').'/js/jquery.cycle.all.js');
+				drupal_add_js(drupal_get_path('module','widescreen_slider').'/js/widescreen_slider.js');
+				drupal_add_js(array('widescreen_slider' => array('animation' => $animation, 'speed' => $speed, 'delay' => $delay)), 'setting');
+
+				$node = node_load($node_id);
+				$content = theme('widescreen_slider', $node->$img_set_field, $node->$url_field, $node);
+			} else {
+				$content = '';
+			}
+
+			return array('subject' => '<none>', 'content' => $content);
+	}
+}
+
+function theme_widescreen_slider_display($images_set, $urls, $node) {
+	$i = 0;
+	$content = '<div id="slideshow-pager"><div class="pager_container"></div></div><div id="widescreen-slideshow">';
+	foreach($images_set as $image) {
+		$box_width = ($node->field_box_width[$i]['value']) ? ' width: '.$node->field_box_width[$i]['value'].'px;' : '';
+		$box_opacity = ($node->field_slide_b_opacity[$i]['value']) ? ' background: rgba('._widescreen_slider_hex_to_rgb($node->field_slide_box_colors[$i]['value']).', '.(((int)$node->field_slide_b_opacity[$i]['value'])/100).');' : '';
+		$box_color = ($node->field_slide_box_colors[$i]['value']) ? ' background: '.$node->field_slide_box_colors[$i]['value'].';' : '';
+		$content .= '<div class="slide" style="background: url('.base_path().$image['filepath'].');"><div class="slider_content">';	
+		$content .= '<div class="slideinfo" style="'.$box_width.'">';
+		$content .= '<div class="slide-title" style="'.$box_color.$box_opacity.'">'.$image['data']['title'].'</div>';
+		$content .= '<div class="slide-alt" style="'.$box_color.$box_opacity.'">'.$image['data']['alt'].'</div>';
+		$content .= '<div class="slide-link">'.l(empty($urls[$i]) ? 'View Slide' : $urls[$i]['title'], $urls[$i]['url']).'</div>';
+		$content .= '</div>';
+		$content .= '</div></div>';
+		$i++;
+	}
+
+	return $content.'</div>';
+}
+
+function _widescreen_slider_hex_to_rgb($color_hex) {
+	//ussing mac address alogrithm
+	$clear_mac = preg_replace('/[^0-9A-F]/i','',$color_hex);
+    $mac_decimal = array();
+    for ($i = 0; $i < strlen($clear_mac); $i += 2 ):
+        $mac_decimal[] = hexdec(substr($clear_mac, $i, 2));
+    endfor;
+    return implode(', ',$mac_decimal);
+}

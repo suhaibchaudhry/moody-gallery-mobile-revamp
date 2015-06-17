@@ -1,0 +1,176 @@
+<?php
+function da_length_adjustments_form_alter(&$form, &$form_state, $form_id) {
+	if($form_id == 'uc_product_adjustments_form' && isset($form['table']['body'])) {
+		$form['table']['head']['#value'] .= '<th>Detailed Size Information</th>';
+		$adjustments = unserialize(_da_length_adjustments_get($form['nid']['#value']));
+		foreach($form['table']['body'] as $key => $element) {
+			if(is_array($element)) {
+				$combo_array = unserialize($element['combo_array']['#value']);
+				$combo_key = array_pop($combo_array);
+				$form['table']['body'][$key]['length'] = array(
+					'#type' => 'textfield',
+					'#prefix' => '<td>',
+					'#suffix' => '</td>',
+					'#default_value' => $adjustments[$combo_key],
+					'#description' => 'Ex: Length=3.5"|Waist=30"'
+				);
+			}
+		}
+		$form['#submit'][] = '_da_length_adjustments_save';
+	} elseif($form_id == 'uc_object_attributes_form' && $form['view']['#value'] == 'overview') {
+		$form['#submit'][] = '_da_attribute_adjustments_attributes_save';
+	} elseif($form_id == 'uc_object_options_form') {
+		$form['#submit'][] = '_da_attribute_adjustments_attribute_options_save';
+	} elseif($form_id == 'uc_product_field_settings_form') {
+		//Add to ubercart drag-drop interface
+		$enabled = variable_get('uc_product_field_enabled', array());
+		$weight = variable_get('uc_product_field_weight', array());
+
+		$form['fields']['da_length']['enabled'] = array(
+			'#type' => 'checkbox',
+			'#default_value' => isset($enabled['da_length']) ? $enabled['da_length'] : FALSE,
+		);
+		$form['fields']['da_length']['title'] = array(
+			'#type' => 'markup',
+			'#value' => 'Size Length Adjustments',
+		);
+		$form['fields']['da_length']['weight'] = array(
+			'#type' => 'weight',
+			'#delta' => 10,
+			'#default_value' => isset($weight['da_length']) ? $weight['da_length'] : 4,
+		);
+	}
+}
+
+function _da_attribute_adjustments_attribute_options_save($form_id, $form_values) {
+	$selected = array();
+
+	foreach($form_values['values']['attributes'] as $attribute) {
+		foreach($attribute['options'] as $oid => $option) {
+			if($option['select']) {
+				$selected[] = $oid;
+			}
+		}
+	}
+	$adjustments = unserialize(_da_length_adjustments_get($form_values['values']['id']));
+	if($adjustments) {
+		foreach($adjustments as $key => $adjustment) {
+			if(!in_array($key, $selected)) {
+				unset($adjustments[$key]);
+			}
+		}
+	}
+	
+	if(count($selected) == 0 || count($adjustments) == 0) {
+		//Delete all adjustments
+		db_query("DELETE FROM {da_length_adjustments} WHERE nid = %d", $form_values['values']['id']);
+	} else {
+		//Sync adjustments
+		$update = new stdClass;
+		$update->nid = $form_values['values']['id'];
+		$update->adjustments = serialize($adjustments);
+
+		if(db_result(db_query('SELECT nid FROM {da_length_adjustments} WHERE nid = %d', $update->nid))) {
+			drupal_write_record('da_length_adjustments', $update, 'nid');
+		} else {
+			drupal_write_record('da_length_adjustments', $update);
+		}
+	}
+}
+
+function _da_attribute_adjustments_attributes_save($form_id, $form_values) {
+	//if all attributes are deleted then delete the adjustments associated with the node
+	$remove_sum = 0;
+	foreach($form_values['values']['attributes'] as $attribute) {
+		$remove_sum += $attribute['remove'];
+	}
+	if($remove_sum == count($form_values['values']['attributes'])) {
+		db_query("DELETE FROM {da_length_adjustments} WHERE nid = %d", $form_values['values']['id']);
+	}
+}
+
+function _da_length_adjustments_save($form_id, $form_values) {
+	$adjustments_array = array();
+	foreach($form_values['values']['body'] as $element) {
+		$combo_array = unserialize($element['combo_array']);
+		$key = array_pop($combo_array);
+		$adjustments_array[$key] = $element['length'];
+	}
+
+	$adjustments = new stdClass;
+	$adjustments->nid = $form_values['values']['nid'];
+	$adjustments->adjustments = serialize($adjustments_array);
+
+	if(db_result(db_query('SELECT nid FROM {da_length_adjustments} WHERE nid = %d', $adjustments->nid))) {
+		drupal_write_record('da_length_adjustments', $adjustments, 'nid');
+	} else {
+		drupal_write_record('da_length_adjustments', $adjustments);
+	}
+}
+
+function _da_length_adjustments_get($nid) {
+	return db_result(db_query('SELECT adjustments FROM {da_length_adjustments} WHERE nid = %d', $nid));
+}
+
+function da_length_adjustments_nodeapi(&$node, $op, $a3 = NULL, $a4 = NULL) {
+	if($op == 'load') {
+		$adjustments = unserialize(_da_length_adjustments_get($node->nid));
+		if($adjustments) {
+			foreach($adjustments as $oid => $adjustment) {
+				$node->da_length[da_length_adjustments_get_option_name($oid)] = $adjustment;
+			}
+		}
+	} elseif($op == 'view') {
+		$enabled = variable_get('uc_product_field_enabled', array());
+		$weight = variable_get('uc_product_field_weight', array());
+
+		if($enabled['da_length']) {
+			$node->content['da_length']['#value'] = theme('da_size_length_table', $node->da_length);
+			$node->content['da_length']['#weight'] = $weight['da_length']; //make configurable later
+		}
+	}
+}
+
+function da_length_adjustments_get_option_name($oid) {
+	return db_result(db_query('SELECT name FROM {uc_attribute_options} WHERE oid = %d', $oid));
+}
+
+function da_length_adjustments_theme($existing, $type, $theme, $path) {
+	return array(
+		'da_size_length_table' => array(
+			'variables' => array('lengths' => NULL),
+			'function' => 'da_size_length_table'
+		)
+	);
+}
+
+function da_size_length_table($lengths) {
+	$content = '';
+	if($lengths) {
+		$content .= '<div class="da-size-length-table">';
+		$table = da_length_adjustments_get_table($lengths);
+		$content .= theme_table($table['header'], $table['rows']);
+		$content .= '</div>';
+	}
+	return $content;
+}
+
+function da_length_adjustments_get_table($lengths) {
+	$header[] = '';
+	$i = 0;
+	foreach($lengths as $size => $length) {
+		$header[] = $size;
+		foreach(split("\|", $length) as $key => $val) {
+			list($title, $value) = split("=", $val);
+			if($i == 0) {
+				$rows[$key][] = '<strong>'.$title.'</strong>';
+			}
+			$rows[$key][] = $value;
+			
+		}
+		$i++;
+	}
+	$table['header'] = $header;
+	$table['rows'] = $rows;
+	return $table;
+}

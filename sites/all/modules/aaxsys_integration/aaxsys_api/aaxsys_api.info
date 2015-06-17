@@ -1,0 +1,7 @@
+name = AAXSYS API
+description = Aaxsys API integration module provides a wrapper API for other drupal modules.
+package = AAXSYS Reservation System Integration
+dependencies[] = date_api
+dependencies[] = imagecache_external
+dependencies[] = jquery_ui
+core = 6.x

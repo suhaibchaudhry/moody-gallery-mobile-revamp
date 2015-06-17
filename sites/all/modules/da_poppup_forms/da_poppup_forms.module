@@ -1,0 +1,37 @@
+<?php
+function da_poppup_forms_menu() {
+    $items['da_poppup_forms/node/add/%'] = array(
+      'title' => 'Add new product',
+	  'description' => 'Themefree product add form.',
+      'page callback' => 'da_poppup_forms_themefree_node_add',
+      'page arguments' => array(3),
+      'access callback' => 'da_poppup_forms_themefree_node_access',
+      'access arguments' => array(3),
+	  'type' => MENU_CALLBACK
+    );
+	return $items;
+}
+
+function da_poppup_forms_form_alter(&$form, &$form_state, $form_id) {
+	drupal_add_css(drupal_get_path('module','da_poppup_forms').'/css/formfix.css');
+	//assumes the convention field_phone_[node-type] for node references, adds a link that adds the product on the bottom.
+	if (isset($form['type']) && $form['type']['#value'] .'_node_form' == $form_id) {
+		foreach($form as $key => $val) {
+			if(strpos($key, 'field_phone_') !== FALSE) {
+				$content_type = str_replace('field_phone_', '', $key);
+				$form[$key]['#suffix'] = '<div class="prodaddlink">'.l('Add '.$form[$key]['#title'], '', array('attributes' => array('onclick' => "window.open('".base_path()."da_poppup_forms/node/add/".$content_type."','Product Add Window','menubar=0,width=850,height=600,toolbar=0,scrollbars=1'); return false;"))).'<hr /></div>'.$form[$key]['#suffix'];
+			}
+		}
+	}
+	//dsm($form);
+	//dsm($form_state);
+	//dsm($form_id);
+}
+
+function da_poppup_forms_themefree_node_add($type) {
+	module_load_include('inc', 'node', 'node.pages');
+	return node_add($type);
+}
+function da_poppup_forms_themefree_node_access($type) {
+	return user_access('create '.$type.' products');
+}

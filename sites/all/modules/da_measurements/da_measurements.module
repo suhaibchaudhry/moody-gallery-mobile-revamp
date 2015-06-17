@@ -1,0 +1,221 @@
+<?php
+function da_measurements_menu() {
+	$urls['user/%user_category/measurements'] = array(
+		'title' => 'Edit Measurements',
+		'page callback' => 'da_measurements_edit',
+		'page arguments' => array(1),
+		'access callback' => 'user_edit_access',
+		'access arguments' => array(1),
+		'type' => MENU_LOCAL_TASK,
+		'load arguments' => array('%map', '%index')
+	);
+	return $urls;	
+}
+
+function da_measurements_edit($account) {
+	drupal_set_title('Edit Measurements');
+	return drupal_get_form('da_measurements_form');	
+}
+
+function da_measurements_profile_alter(&$account) {
+	$defaults = da_measurements_selections();
+	$options = da_measurements_options();
+	$account->content['da_measurements'] = array(
+		'#type' => 'user_profile_category',
+		'#title' => 'Measurements',
+		'#weight' => -4,
+		'measurements' => array(
+			'#type' => 'user_profile_item',
+			'#value' => da_measurements_profile_pane($defaults, $options)
+		)
+	);
+}
+
+function da_measurements_profile_pane($defaults, $options) {
+	global $user;
+	$header = array('Height', 'Bust', 'Bra Size', 'Waist', 'Hips', 'Shoe Size');
+	if(empty($defaults)) {
+		$rows[0] = array_fill(0, 6, '--');
+	} else {
+		$rows[0][] = $options['h_ft'][$defaults['h_ft']]."' ".$options['h_in'][$defaults['h_in']].'"';
+		$rows[0][] = $options['b_inches'][$defaults['b_inches']].'"';
+		$rows[0][] = 'Band Size: '.$options['b_bandsize'][$defaults['b_bandsize']].'<br />Cup Size: '.$options['b_cupsize'][$defaults['b_cupsize']];
+		$rows[0][] = $options['w_inches'][$defaults['w_inches']].'"';
+		$rows[0][] = $options['h_inches'][$defaults['h_inches']].'"';
+		$rows[0][] = 'Shoe Size: '.$options['sh_size'][$defaults['sh_size']].'<br />Shoe Width: '.$options['sh_width'][$defaults['sh_width']];
+	}
+	$content = '<div class="da-measurements-table">';
+	$content .= '<p class="edit-link">['.l('Edit', 'user/'.$user->uid.'/measurements').']</p>';
+	$content .= theme_table($header, $rows);
+	return $content .= '</div>';
+}
+
+function da_measurements_form($form_state) {
+	drupal_add_css(drupal_get_path('module', 'da_measurements').'/css/da_measurements.css');
+	drupal_add_js(drupal_get_path('module', 'da_measurements').'/js/da_measurements.js');
+	$defaults = da_measurements_selections();
+	$options = da_measurements_options();
+
+	$form['height'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Height'),
+		'#collapsible' => FALSE
+	);
+
+	$form['height']['h_ft'] = array(
+		'#type' => 'select',
+		'#title' => t('Ft.'),
+		'#options' => $options['h_ft'],
+		'#default_value' => $defaults['h_ft']
+	);
+
+	$form['height']['h_in'] = array(
+		'#type' => 'select',
+		'#title' => t('In.'),
+		'#options' => $options['h_in'],
+		'#default_value' => $defaults['h_in']
+	);
+
+	$form['bust'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Bust'),
+		'#collapsible' => FALSE
+	);
+
+	$form['bust']['b_inches'] = array(
+		'#type' => 'select',
+		'#title' => t('Inches'),
+		'#options' => $options['b_inches'],
+		'#default_value' => $defaults['b_inches']
+	);
+
+	$form['brasize'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Bra Size'),
+		'#collapsible' => FALSE
+	);
+
+	$form['brasize']['b_bandsize'] = array(
+		'#type' => 'select',
+		'#options' => $options['b_bandsize'],
+		'#default_value' => $defaults['b_bandsize']
+	);
+
+	$form['brasize']['b_cupsize'] = array(
+		'#type' => 'select',
+		'#options' => $options['b_cupsize'],
+		'#default_value' => $defaults['b_cupsize']
+	);
+
+	$form['waist'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Waist'),
+		'#collapsible' => FALSE
+	);
+
+	$form['waist']['w_inches'] = array(
+		'#type' => 'select',
+		'#title' => t('Inches'),
+		'#options' => $options['w_inches'],
+		'#default_value' => $defaults['w_inches']
+	);
+
+	$form['hips'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Hips'),
+		'#collapsible' => FALSE
+	);
+
+	$form['hips']['h_inches'] = array(
+		'#type' => 'select',
+		'#title' => t('Inches'),
+		'#options' => $options['h_inches'],
+		'#default_value' => $defaults['h_inches']
+	);
+
+	$form['shoesize'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('Shoe Size'),
+		'#collapsible' => FALSE
+	);
+
+	$form['shoesize']['sh_size'] = array(
+		'#type' => 'select',
+		'#title' => t('Shoe Size'),
+		'#options' => $options['sh_size'],
+		'#default_value' => $defaults['sh_size']
+	);
+
+	$form['shoesize']['sh_width'] = array(
+		'#type' => 'select',
+		'#title' => t('Width'),
+		'#options' => $options['sh_width'],
+		'#default_value' => $defaults['sh_width']
+	);
+
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Update')
+	);
+	return $form;
+}
+
+function da_measurements_form_submit($form, $form_values) {
+	global $user;
+	$measurements = $form_values['values'];
+	unset($measurements['op']);
+	unset($measurements['submit']);
+	unset($measurements['form_build_id']);
+	unset($measurements['form_token']);
+	unset($measurements['form_id']);
+	$measurements = serialize($measurements);
+	da_measurements_update($user->uid, $measurements);
+	drupal_set_message('Your measurements have been updated.');
+	drupal_goto('user');
+}
+
+function da_measurements_collapsible_image($img_names) {
+	$content = '<div class="collapsible-howto">';
+	$content .= '<a href="#">How To</a>';
+	$content .= '<div class="hidden-markup">';
+	foreach($img_names as $img_name) {
+		$content .= theme_image(drupal_get_path('module', 'da_measurements').'/images/'.$img_name);
+	}
+	$content .= '</div>';
+	$content .= '</div>';
+	return $content;
+}
+
+function da_measurements_update($uid, $measurements) {
+	$update = new stdClass;
+	$update->uid = $uid;
+	$update->measurements = $measurements;
+	if(db_result(db_query('SELECT uid FROM {da_measurements} WHERE uid = %d', $update->uid))) {
+		drupal_write_record('da_measurements', $update, 'uid');
+	} else {
+		drupal_write_record('da_measurements', $update);
+	}
+}
+
+function da_measurements_options() {
+	return array(
+		'h_ft' => range(3, 7),
+		'h_in' => range(0, 11),
+		'b_inches' => range(20, 60),
+		'b_bandsize' => range(28, 48, 2),
+		'b_cupsize' => array('AA', 'A', 'B', 'C', 'D', 'DD/E', 'DDD/F', 'DDDD/G', 'H', 'I', 'J', 'K'),
+		'w_inches' => range(20, 50),
+		'h_inches' => range(30, 60),
+		'sh_size' => array('5', '5 1/2', '6', '6 1/2', '7', '7 1/2', '8', '8 1/2', '9', '9 1/2', '10', '10 1/2', '11', '11 1/2'),
+		'sh_width' => array('narrow', 'average', 'wide')
+	);
+}
+
+function da_measurements_selections() {
+	global $user;
+	if($object = db_fetch_object(db_query('SELECT {measurements} FROM {da_measurements} WHERE uid = %d', $user->uid))) {
+		return unserialize($object->measurements);
+	} else {
+		return array();	
+	}
+}

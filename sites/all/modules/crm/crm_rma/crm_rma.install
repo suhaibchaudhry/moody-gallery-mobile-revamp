@@ -1,0 +1,56 @@
+<?php
+function crm_rma_schema() {
+	$schema = array();
+	$schema['crm_rma_requests'] = array(
+		'description' => 'Stores RMA requests from customers, and decisions from employees.',
+		'primary key' => array('request_id'),
+		'fields' => array(
+			'request_id' => array(
+				'description' => 'Primary key: RMA Request ID.', 
+				'type' => 'serial',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+			),
+			'order_id' => array(
+				'description' => 'The order to return.', 
+				'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE,
+			),
+			'status' => array(
+				'description' => 'Return request status.', 
+				'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+			),
+			'reason' => array(
+				'description' => 'Reason for returning the order.',
+				'type' => 'varchar',
+				'length' => 500,
+				'not null' => TRUE
+			),
+			'rma_number' => array(
+				'description' => 'A unique randomly generated rma number.',
+				'type' => 'int',
+				'not null' => FALSE,
+				'size' => 'big'
+			),
+			'data' => array(
+				'description' => 'Products to be returned.',
+				'type' => 'varchar',
+				'length' => 200,
+				'not null' => TRUE
+			)
+		)
+	);
+
+	return $schema;
+}
+
+function crm_rma_install() {
+	drupal_install_schema('crm_rma');
+}
+
+function crm_rma_uninstall() {
+	drupal_uninstall_schema('crm_rma');
+}

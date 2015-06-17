@@ -1,0 +1,4 @@
+name = "Term Tokens"
+description = "Simple module that provides a filter that replaces tokens with taxonomy terms, and/or taxonomy images. Syntax is [t:vid:21] for term names for vid 21, and [i:vid:21] images of vid 21, respectively."
+package = D.A. Custom Modules
+core = 6.x

@@ -1,0 +1,7 @@
+﻿version = "1.0"
+name = "Unlock Order"
+description = "Provides an ordering system UI implementation for the Unlockcodesource.com API."
+package = "Cellphone Unlocking"
+dependencies[] = unlock_api
+dependencies[] = da_user_credits
+core = 6.x

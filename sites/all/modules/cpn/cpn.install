@@ -1,0 +1,92 @@
+<?php
+
+/**
+ * Implementation of hook_schema().
+ */
+function cpn_schema() {
+  $schema['cpn'] = array(
+    'fields' => array(
+      'nid' => array('type' => 'int', 'unsigned' => TRUE, 'not null' => TRUE, 'default' => 0),
+      'css' => array('type' => 'text', 'not null' => FALSE),
+      'js' => array('type' => 'text', 'not null' => FALSE),
+    ),
+    'primary key' => array('nid'),
+  );
+  return $schema;
+}
+
+/**
+ * Implementation of hook_schema_alter().
+ */
+function cpn_schema_alter(&$schema) {
+  $schema['blocks']['fields']['css'] = array('type' => 'text', 'not null' => FALSE);
+  $schema['blocks']['fields']['js'] = array('type' => 'text', 'not null' => FALSE);
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function cpn_install() {
+  drupal_install_schema('cpn');
+
+  // Alter blocks table, as defined in hook_schema_alter().
+  $ret = array();
+  $schema = array();
+  cpn_schema_alter($schema);
+  foreach ($schema['blocks']['fields'] as $name => $spec) {
+    db_add_field($ret, 'blocks', $name, $spec);
+  }
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function cpn_uninstall() {
+  drupal_uninstall_schema('cpn');
+  variable_del('cpn_syntax_highlighting');
+
+  // Drop fields from blocks table, as defined in hook_schema_alter().
+  $ret = array();
+  $schema = array();
+  cpn_schema_alter($schema);
+  foreach ($schema['blocks']['fields'] as $name => $spec) {
+    db_drop_field($ret, 'blocks', $name);
+  }
+
+  // Delete CSS & JS files.
+  cpn_recursive_delete(file_create_path('cpn'));
+}
+
+/**
+ * Recursive delete function.
+ */
+function cpn_recursive_delete($path) {
+  if (is_file($path) or is_link($path)) {
+    unlink($path);
+  }
+  elseif (is_dir($path)) {
+    $d = dir($path);
+    while (($entry = $d->read()) !== FALSE) {
+      if ($entry == '.' or $entry == '..') {
+        continue;
+      }
+      $entry_path = $path .'/'. $entry;
+      cpn_recursive_delete($entry_path);
+    }
+    $d->close();
+    rmdir($path);
+  }
+  else {
+    watchdog('cpn', 'Unknown file type(%path) stat: %stat ', array('%path' => $path,  '%stat' => print_r(stat($path),1)), WATCHDOG_ERROR);
+  }
+}
+
+/**
+ * Adds fields in blocks table.
+ */
+function cpn_update_6000() {
+  $ret = array();
+  db_add_field($ret, 'blocks', 'css', array('type' => 'text', 'not null' => FALSE));
+  db_add_field($ret, 'blocks', 'js', array('type' => 'text', 'not null' => FALSE));
+  return $ret;
+}

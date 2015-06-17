@@ -1,0 +1,7 @@
+name = Taxonomy Sort
+description = Allows sorting on taxonomy pages.
+package = D.A. Taxonomy Modules
+core = 6.x
+
+dependencies[] = taxonomy
+dependencies[] = views

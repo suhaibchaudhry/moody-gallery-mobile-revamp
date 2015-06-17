@@ -1,0 +1,5 @@
+name = Order Log
+description = Logs everytime a customer or an employee views an order.
+package = D.A. CRM
+dependencies[] = uc_order
+core = 6.x

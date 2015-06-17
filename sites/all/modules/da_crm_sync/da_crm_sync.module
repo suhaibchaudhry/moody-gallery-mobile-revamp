@@ -1,0 +1,123 @@
+<?php
+function da_crm_sync_menu() {
+	$urls = array();
+	$urls['crm'] = array (
+		"title" => 'CRM System',
+		"description" => 'Frames the off-site CRM solution within this domain.',
+		"page callback" => '_da_crm_sync_view',
+		"access arguments" => array("access content"),
+		"type" => MENU_CALLBACK
+	);
+
+	return $urls;
+}
+
+function _da_crm_sync_view() {
+	print '<html> 
+  <head> 
+    <title>CRM System</title>
+  </head> 
+  <frameset rows="*" framespacing="0" border="0" frameborder="NO"> 
+    <frame src="http://ecrm.us.iis2001.shared-servers.com/" name="CRM_Frame" scrolling="auto" noresize> 
+  </frameset> 
+  <noframes> 
+    <body>
+	You need a browser with frame support to access this content.
+    </body>
+  </noframes> 
+ 
+</html>';
+}
+
+function da_crm_sync_order($op, &$arg1, $arg2) {
+	if($op == "submit") {
+		$i = 1;
+		$comments = uc_order_comments_load($arg1->order_id, FALSE);
+		$time = date("Y-m-d h:i:s");
+		
+		$data = array(
+			'tblCustomerInfo-OrderNumber' => $arg1->order_id,
+			'tblCustomerInfo-Company' => $arg1->billing_company,
+			'tblCustomerInfo-FirstName_Billing' => $arg1->billing_first_name,
+			'tblCustomerInfo-LastName_Billing' => $arg1->billing_last_name,
+			'tblCustomerInfo-Address_Billing' => $arg1->billing_street1,
+			'tblCustomerInfo-Address2_Billing' => $arg1->billing_street2,
+			'tblCustomerInfo-City_Billing' => $arg1->billing_city,
+			'tblCustomerInfo-State_Billing' => uc_zone_get_by_id($arg1->billing_zone),
+			'tblCustomerInfo-Zip_Billing' => $arg1->billing_postal_code,
+			'tblCustomerInfo-Country_Billing' => uc_country_get_by_id($arg1->billing_country),
+			'tblCustomerInfo-Phone_Billing' => $arg1->billing_phone,
+			'tblCustomerInfo-FirstName_Shipping' => $arg1->delivery_first_name,
+			'tblCustomerInfo-LastName_Shipping' => $arg1->delivery_last_name,
+			'tblCustomerInfo-Address_Shipping' => $arg1->delivery_street1,
+			'tblCustomerInfo-Address2_Shipping' => $arg1->delivery_street2,
+			'tblCustomerInfo-City_Shipping' => $arg1->delivery_city,
+			'tblCustomerInfo-State_Shipping' => uc_zone_get_by_id($arg1->delivery_zone),
+			'tblCustomerInfo-Zip_Shipping' => $arg1->delivery_postal_code,
+			'tblCustomerInfo-Country_Shipping' => uc_country_get_by_id($arg1->delivery_country),
+			'tblCustomerInfo-Phone_Shipping' => $arg1->delivery_phone,
+			'tblCustomerInfo-Email' => $arg1->primary_email,
+			'tblCustomerInfo-CCAuthInfo' => '',
+			'tblCustomerInfo-CCApproved' => '',
+			'tblCustomerInfo-PaymentMethod' => $arg1->payment_method,
+			'tblCustomerInfo-DiscountCode' => '',
+			'tblCustomerInfo-IPAddress' => ip_address(),
+			'tblCustomerInfo-Comments_Customer' => $comments[0],
+			'tblCustomerInfo-PurchaseOrder' => '',
+			'tblCustomerInfo-WGCorporateAccount' => '',
+			'tblCustomerInfo-Shipping' => $arg1->quote["rate"],
+			'tblCustomerInfo-ShippingType' => $arg1->quote["method"],
+			'tblCustomerInfo-CCNo' => '',
+			'tblCustomerInfo-How' => '',
+			'tblCustomerInfo-Email_Promotion' => '', 
+			'tblCustomerInfo-Why' => '',
+			'tblCustomerInfo-TicketNumber' => '',
+			'tblCustomerInfo-ResolutionDate' => '',
+			'tblCustomerInfo-SalesRep' => '',
+			'tblCustomerInfo-StatusID' => '5',
+			'tblCustomerInfo-myEmail' => '',
+			'tblCustomerInfo-myExtension' => '',
+			
+			'tblWGOrders-OrderDate' => $time,
+			'tblWGOrders-BillingDate' => $time,
+			'tblWGOrders-OrderTime' => $time,
+			'tblWGOrders-OrderNumber' => $arg1->order_id,
+			'tblWGOrders-OrderTotal' => $arg1->order_total,
+			'tblWGOrders-NumberOfItems' => $arg1->product_count,
+			'tblWGOrders-CartID' => '',
+			'tblWGOrders-BillingTime' => $time,
+			'tblWGOrders-BillingDateTime' => $time,
+			'tblWGOrders-Cancelled' => '',
+			'tblWGOrders-CancelledDate' => '',
+			'tblWGOrders-CancelledBy' => '',
+			'tblWGOrders-OFound' => '',
+			'tblWGOrders-OResolved' => '',
+			'tblWGOrders-NavisionStatus' => '',
+			'tblWGOrders-NavisionDate' => '',
+			'tblWGOrders-VendorID' => '',
+			'tblWGOrders-ETA' => '',
+			'tblWGOrders-ETAFlagged' => '',
+			'tblWGOrders-NoOfEmails' => ''
+		);
+		
+		foreach($arg1->products as $product) {
+			$data['tblWGOrderDetails'.$i.'-OrderNumber'] = $arg1->order_id;
+			$data['tblWGOrderDetails'.$i.'-Item'] = $product->title;
+			$data['tblWGOrderDetails'.$i.'-PartNo'] = $product->model;
+			$data['tblWGOrderDetails'.$i.'-Price'] = $product->price;
+			$data['tblWGOrderDetails'.$i.'-Qty'] = $product->qty;
+			$data['tblWGOrderDetails'.$i.'-Total'] = ($product->price*$product->qty);
+			$data['tblWGOrderDetails'.$i.'-Options'] = '0';
+			$data['tblWGOrderDetails'.$i.'-ProductLineID'] = '0';
+			$data['tblWGOrderDetails'.$i.'-CategoryID'] = '0';
+			$data['tblWGOrderDetails'.$i.'-SubCategoryID'] = '0';
+			$data['tblWGOrderDetails'.$i.'-CostPrice'] = $product->cost;
+			$data['tblWGOrderDetails'.$i.'-ShipDate'] = '';
+			$data['tblWGOrderDetails'.$i.'-PostedQty'] = '';
+			
+			$i++;
+		}
+		
+		$response = drupal_http_request("http://ecrm.us.iis2001.shared-servers.com/sync/webservice.asp", array('Content-Type' => 'application/x-www-form-urlencoded'), 'POST', http_build_query($data, '', '&'));
+	}
+}

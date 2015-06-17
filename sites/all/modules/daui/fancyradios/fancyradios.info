@@ -1,0 +1,6 @@
+name = Fancy Attribute Radios
+description = Convert attribute radios to image buttons.
+package = D.A. UI
+core = 6.x
+
+dependencies[] = jquery_update

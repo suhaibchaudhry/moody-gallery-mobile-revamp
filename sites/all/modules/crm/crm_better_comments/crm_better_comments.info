@@ -1,0 +1,5 @@
+name = Better Comments
+description = Enhances the order comments display for better CRM experience.
+package = D.A. CRM
+dependencies[] = uc_order
+core = 6.x

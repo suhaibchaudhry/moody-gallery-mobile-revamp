@@ -1,0 +1,15 @@
+; $Id: storm_dashboard.info,v 1.2 2009/09/17 18:06:33 jurgenhaas Exp $
+name = Storm Dashboard
+description = Get an alternative Storm Dashboard with JQuery
+package = Storm
+core = 6.x
+php = 5
+dependencies[] = storm
+dependencies[] = stormorganization
+
+; Information added by drupal.org packaging script on 2009-12-07
+version = "6.x-1.0"
+core = "6.x"
+project = "storm_dashboard"
+datestamp = "1260184270"
+

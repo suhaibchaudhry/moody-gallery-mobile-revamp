@@ -1,0 +1,699 @@
+<?php
+function unlock_order_init() {
+	define('UNLOCK_PENDING', 0);
+	define('UNLOCK_FOUND', 1);
+	define('UNLOCK_NOT_FOUND_NR', 2);
+	define('UNLOCK_NOT_FOUND_R', 3);	
+	define('UNLOCK_CANCELED', 4);
+}
+
+function unlock_order_perm() {
+	return array('place unlocking orders', 'edit unlock pricing', 'place retail orders', 'access full reports', 'access financial reports');
+}
+
+function unlock_order_block($op = 'list', $delta = 0, $edit = array()) {
+	if ($op == 'list') {
+    	$blocks[0] = array(
+			'info' => t('Order Status Link'), 
+			'cache' => BLOCK_NO_CACHE
+    	);
+		
+		$blocks[1] = array(
+			'info' => t('Unlock Tools'), 
+			'cache' => BLOCK_NO_CACHE
+    	);
+		
+		$blocks[2] = array(
+			'info' => t('Order Statistics'),
+			'cache' => BLOCK_NO_CACHE
+		);
+
+		return $blocks;
+	} else if ($op == 'view' && $delta == 0) {
+		global $user;
+		if($user->uid) {
+			$block = array('content' => l('View Order Status', 'user', array('attributes' => array('class' => 'unlock-order-status-button'))));
+		}
+
+		return $block;
+    } else if ($op == 'view' && $delta == 1) {
+		return array('content' => '<div class="unlock-tools-dropdown-form-container">'.drupal_get_form('unlock_tools_dropdown_form').'</div>');
+	} else if($op == 'view' && $delta == 2) {
+		return array('content' => _unlock_order_statistics_block());
+	}
+}
+
+function _unlock_order_statistics_block() {
+	drupal_add_css(drupal_get_path('module', 'unlock_order').'/css/statistics.css');
+	drupal_add_js(drupal_get_path('module', 'unlock_order').'/js/order_statistics.js');
+	return '<div class="order-statistics-block">'.unlock_order_date_stats((int)date("n"), (int)date("Y")).'</div>';
+}
+
+function unlock_order_date_stats($month, $year, $theme_less = FALSE) {
+	global $user;
+	$month = (int)$month;
+	$year  = (int)$year;
+
+	$start = mktime(0,0,0,$month,1,$year);
+	$end = mktime(23,59,00,$month+1,0,$year);
+	$query_fragment = " AND uo.timestamp > ".$start." AND uo.timestamp <".$end;
+	
+	if(!user_access('access full reports')) {
+		$query_fragment .= " AND uo.user_id = ".$user->uid;
+	}
+	
+	$data = array();
+	$requests_completed = db_result(db_query("SELECT COUNT(*) FROM {unlock_orders} uo WHERE uo.status IN (".UNLOCK_FOUND.", ".UNLOCK_NOT_FOUND_NR.", ".UNLOCK_NOT_FOUND_R.")".$query_fragment));
+	$unlock_codes_found = db_result(db_query("SELECT COUNT(*) FROM {unlock_orders} uo WHERE uo.status = %d".$query_fragment, UNLOCK_FOUND));
+	$unlock_code_not_found = db_result(db_query("SELECT COUNT(*) FROM {unlock_orders} uo WHERE uo.status IN (".UNLOCK_NOT_FOUND_NR.", ".UNLOCK_NOT_FOUND_R.")".$query_fragment));
+	$pending = db_result(db_query("SELECT COUNT(*) FROM {unlock_orders} uo WHERE uo.status = %d".$query_fragment, UNLOCK_PENDING));
+	
+	$header = array('Requests Completed', 'Unlock Codes Found', 'Unlock Codes Not-Found', 'Pending Orders');
+	$data[] = array($requests_completed, $unlock_codes_found, $unlock_code_not_found, $pending);
+	
+	$content = '<div class="order-stats">';
+	$content .= '<h3>Order Statistics for '.date("F Y", $end).'</h3>';
+	$content .= theme('table', $header, $data);
+	$content .= unlock_order_get_prev_button($month, $year);
+	if(user_access('access full reports')) {
+		$content .= '<div class="stats-midnav">';
+		$content .= l('Full Order Report', 'admin/unlock-order/all-orders/'.$month.'/'.$year);
+		if(user_access('access financial reports')) {
+			$content .= l('PayPal Report', 'admin/paypal-report/'.$month.'/'.$year);
+		}
+		$content .= '</div>';
+	}
+	if(date("F o") != date("F o", $end)) {
+		$content .= unlock_order_get_next_button($month, $year);
+	}
+
+	$content .= '</div>';
+	
+	if($theme_less) {
+		print $content;	
+	} else {
+		return $content;
+	}
+}
+
+function unlock_order_get_next_button($month, $year) {
+	if($month == 12) {
+		$month = 1;
+		$year = $year + 1;
+	} else {
+		$month++;	
+	}
+	
+	return '<a href="#" rel="'.$month.','.$year.'" class="next-month">Next Month</a>';
+}
+
+function unlock_order_get_prev_button($month, $year) {
+	if($month == 1) {
+		$month = 12;
+		$year = $year - 1;
+	} else {
+		$month--;	
+	}
+	
+	return '<a href="#" rel="'.$month.','.$year.'" class="prev-month">Previous Month</a>';
+}
+
+
+function unlock_order_menu() {
+	$urls['unlock-order/%'] = array(
+		'title' => t('Order an Unlock'),
+		'description' => t('Place an unlock order of a given tool_id.'),
+		'page callback' => 'unlock_order_tool',
+		'page arguments' => array(1),
+		'access arguments' => array('place unlocking orders'),
+		'type' => MENU_CALLBACK,
+		'file' => 'unlock_order_page.inc'
+	);
+	
+	$urls['retail-unlock-order'] = array(
+		'title' => t('Single Unlock Order'),
+		'description' => t('An interface to place retail orders.'),
+		'page callback' => 'unlock_order_retail',
+		'access arguments' => array('place retail orders'),
+		'type' => MENU_CALLBACK,
+		'file' => 'unlock_order_page.inc'
+	);
+	
+	$urls['retail-order-button/%'] = array(
+		'title' => t('PayPal Button'),
+		'description' => t('Shows price and paypal button.'),
+		'page callback' => 'unlock_retail_button',
+		'page arguments' => array(1),
+		'access arguments' => array('place retail orders'),
+		'type' => MENU_CALLBACK,
+		'file' => 'unlock_order_page.inc'
+	);
+
+	$urls['unlock-tools'] = array(
+		'title' => t('Unlock Tools'),
+		'description' => 'A list of all available unlock tools.',
+		'page callback' => 'unlock_tools',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+		'file' => 'unlock_order_page.inc'
+	);
+
+	$urls['admin/user/pricing'] = array(
+		'title' => t('Edit User Pricing'),
+		'description' => t('Configure user pricing for user roles based on price range.'),
+		'page callback' => 'unlock_order_admin',
+		'access arguments' => array('edit unlock pricing'),
+		'file' => 'unlock_order_admin.inc',
+		'type' => MENU_NORMAL_ITEM
+	);
+	
+	$urls['admin/settings/pricing'] = array(
+		'title' => t('Edit Pricing Settings'),
+		'description' => t('Configure pricing range and limits.'),
+		'page callback' => 'unlock_order_pricing_settings_admin',
+		'access arguments' => array('edit unlock pricing'),
+		'file' => 'unlock_order_admin.inc',
+		'type' => MENU_NORMAL_ITEM
+	);
+	
+	$urls['admin/settings/unlock-order-emails'] = array(
+		'title' => t('Edit Unlock Order Email Templates'),
+		'description' => t('Change the basic templates of emails that are sent to customers on various events.'),
+		'page callback' => 'unlock_order_email_templates_admin',
+		'access arguments' => array('edit unlock pricing'),
+		'file' => 'unlock_order_admin.inc',
+		'type' => MENU_NORMAL_ITEM
+	);
+	
+	$urls['unlock-instructions'] = array(
+		'title' => t('Unlock Instructions'),
+		'description' => t('Display unlock instructions.'),
+		'page callback' => 'unlock_order_instructions',
+		'page arguments' => array(1),
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK,
+		'file' => 'unlock_order_page.inc'
+	);
+	
+	$urls['admin/unlock-stats/%/%'] = array(
+		'title' => t('Unlock Statistics AJAX helper.'),
+		'description' => 'Provides a summary of statistics for unlock orders.',
+		'page callback' => 'unlock_order_date_stats',
+		'page arguments' => array(2, 3, TRUE),
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK
+	);
+	
+	$urls['unlock-order/update-trigger'] = array(
+		'title' => t('Update User Orders'),
+		'description' => 'Allow remote callback triggering of order status update.',
+		'page callback' => 'unlock_order_update_trigger',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK
+	);
+	
+	$urls['admin/unlock-order/all-orders'] = array(
+		'title' => t('Order Report'),
+		'description' => 'Provides a summary of statistics for unlock orders.',
+		'page callback' => 'unlock_order_list_complete',
+		'page arguments' => array('1', TRUE),
+		'access arguments' => array('access full reports'),
+		'type' => MENU_CALLBACK
+	);
+	
+	$urls['admin/unlock-order/export'] = array(
+		'title' => t('Order Report Excel Export'),
+		'description' => 'Exports all orders to a CSV file.',
+		'page callback' => 'unlock_order_export',
+		'access arguments' => array('access full reports'),
+		'file' => 'batch_export.inc',
+		'type' => MENU_CALLBACK
+	);
+
+	return $urls;
+}
+
+function unlock_order_update_trigger() {
+	unlock_order_update_orders_from_api();
+	print '<h2>Sync Complete</h2>';
+}
+
+//Display Order history on user profile
+function unlock_order_profile_alter(&$account) {
+	unlock_order_update_orders_from_api($account->uid);
+	$account->content['completed_orders']['#value'] = unlock_order_list_complete($account->uid);
+	$account->content['completed_orders']['#weight'] = 1;
+}
+
+function unlock_order_list_complete($uid, $complete = FALSE) {
+	drupal_add_css(drupal_get_path('module', 'unlock_order').'/css/unlock_order_table.css');
+	$content = '';
+	if($complete) {
+		$month = (int)arg(3);
+		$year  = (int)arg(4);
+
+		$start = mktime(0,0,0,$month,1,$year);
+		$end = mktime(23,59,00,$month+1,0,$year);
+		$query_fragment = " AND uo.timestamp > ".$start." AND uo.timestamp <".$end;
+
+		drupal_set_title('Order Report for '.date("F Y", $end));
+		if(user_access('access financial reports')) {
+			if(db_result(db_query("SELECT COUNT(*) FROM {unlock_orders} uo WHERE 1 ".$query_fragment))) {
+				$total_cost = db_result(db_query("SELECT SUM(uo.cost) FROM {unlock_orders} uo WHERE uo.status = %d".$query_fragment, UNLOCK_FOUND));
+				$total_price = db_result(db_query("SELECT SUM(uo.price) FROM {unlock_orders} uo WHERE uo.status = %d".$query_fragment, UNLOCK_FOUND));
+				$response_time = db_result(db_query("SELECT AVG(uo.ctimestamp - uo.timestamp) FROM {unlock_orders} uo WHERE uo.status = %d".$query_fragment, UNLOCK_FOUND));
+				$content .= '<p><strong>Total Revenue: </strong><span class="credit-amount">$'.number_format($total_price, 2).'</span></p>';
+				$content .= '<p><strong>Total Cost: </strong><span class="credit-amount">$'.number_format($total_cost, 2).'</span></p>';
+				$content .= '<p><strong>Total Profit: </strong><span class="credit-amount">$'.number_format($total_price-$total_cost, 2).'</span> ('.number_format((($total_price-$total_cost)/$total_cost)*100, 2).'%)</p>';
+				$content .= '<p><strong>Average Response Time: </strong><span class="credit-amount">'.unlock_order_Sec2Time($response_time).'</span></p>';
+				$content .= l('Excel Export', 'admin/unlock-order/export', array('attributes' => array('class' => 'excel-export')));
+			}
+		}
+		$header = array(array('data' => 'Submitted', 'field' => 'uo.timestamp'), array('data' => 'Completed', 'field' => 'uo.ctimestamp'), 'Unlock Tool', array('data' => 'Reseller', 'field' => 'uo.user_id'), array('data' => 'Order #', 'field' => 'uo.order_id', 'sort' => 'desc'), 'Status', 'Remote REF', 'IMEI', 'Model', 'Customer Email', array('data' => 'Cost', 'field' => 'uo.cost'), array('data' => 'Sell Price', 'field' => 'uo.price'), 'Profit', 'Unlock Code', 'Additional Notes', 'Tool AVG Response Time');
+	} else {
+		$header = array(array('data' => 'Submitted', 'field' => 'uo.timestamp'), array('data' => 'Completed', 'field' => 'uo.ctimestamp'), 'Unlock Tool', array('data' => 'Order #', 'field' => 'uo.order_id', 'sort' => 'desc'), 'Status', 'IMEI', 'Model', 'Customer Email', array('data' => 'Price', 'field' => 'uo.price'), 'Unlock Code');
+	}
+	$data = array();
+	$sql = "SELECT * FROM {unlock_orders} uo ";
+	if($complete) {
+		$sql .= 'WHERE 1 '.$query_fragment;
+	} else {
+		$sql .= " WHERE uo.user_id = %d ";
+	}
+	if(isset($_SESSION['imei_search'])) {
+		$sql .= " AND uo.imei LIKE '%%".$_SESSION['imei_search']."%%'";
+		$_SESSION['imei_search_error'] = TRUE;
+		unset($_SESSION['imei_search']);
+	}
+
+	$orders = pager_query($sql . tablesort_sql($header), 25, 0, NULL, $uid);
+	while($order = db_fetch_object($orders)) {
+		if($complete) {
+			$remote_id = $order->remote_order_id == 'RECYCLED' ? '<span class="credit-amount">'.$order->remote_order_id.'</span>' : $order->remote_order_id;
+			$user = user_load($order->user_id);
+			$data[] = array(unlock_order_format_timestamp($order->timestamp), unlock_order_format_timestamp($order->ctimestamp), l(unlock_order_get_tool_name($order->tool_id), 'unlock-order/'.$order->tool_id), l($user->name, 'user/'.$user->uid).'<br />'.$user->mail, $order->order_id, unlock_order_status($order->status), $remote_id, $order->imei, $order->model, $order->cust_email, '<span class="credit-amount">'.number_format($order->cost, 2).'</span>', '<span class="credit-amount">'.number_format($order->price, 2).'</span>', '<span class="credit-amount">'.number_format($order->price-$order->cost, 2).'</span>', unlock_order_format_code(str_replace(array(';', ',', '|', '_', '-'), "<br />", $order->code), $order->status, $order->tool_id), $order->notes, unlock_order_tool_response($order->tool_id, $query_fragment));
+		} else {
+			$data[] = array(unlock_order_format_timestamp($order->timestamp), unlock_order_format_timestamp($order->ctimestamp), l(unlock_order_get_tool_name($order->tool_id), 'unlock-order/'.$order->tool_id), $order->order_id, unlock_order_status($order->status), $order->imei, $order->model, $order->cust_email, '<span class="credit-amount">'.number_format($order->price, 2).'</span>', unlock_order_format_code(str_replace(array(';', ',', '|', '_', '-'), "<br />", $order->code), $order->status, $order->tool_id));
+		}
+	}
+	$content .= '<div class="imei-search">'.drupal_get_form('unlock_order_imei_search_form').'</div>';
+	if($data) {
+		if(!$complete) {
+			$content .= '<div class="completed-orders"><h3>Order History</h3>';
+		}
+		$content .= theme('table', $header, $data);
+		$content .= '</div>';
+		$content .= theme('pager');
+	} else {
+		if(isset($_SESSION['imei_search_error'])) {
+			$content .= 'Your search did not return any results.';
+			unset($_SESSION['imei_search_error']);
+		} elseif($complete) {
+			$content .= '<strong>No orders found of this month.</strong>';
+		} else {
+			$content .= '<strong>You do not have any orders associated with this account.</strong>';
+		}
+	}
+	
+	return $content;
+}
+
+function unlock_order_tool_response($tool_id, $query_fragment) {
+	static $tools = array();
+	if(isset($tools[$tool_id])) {
+		return $tools[$tool_id];	
+	} else {
+		$response_time = db_result(db_query("SELECT AVG(uo.ctimestamp - uo.timestamp) FROM {unlock_orders} uo WHERE uo.status = %d AND tool_id = %d ".$query_fragment, UNLOCK_FOUND, $tool_id));
+		$tools[$tool_id] = unlock_order_Sec2Time($response_time);
+		return $tools[$tool_id];
+	}
+}
+
+function unlock_order_get_tool_name($tool_id) {
+	static $tool_names = array();
+	if(isset($tool_names[$tool_id])) {
+		return $tool_names[$tool_id];
+	} else {
+		$tools = unlock_api_get_unlocktools($tool_id);
+		$tool_names[$tool_id] = htmlspecialchars_decode($tools['unlock_tools']['tool']['tool_name']);
+		return $tool_names[$tool_id];
+	}
+}
+
+function unlock_order_imei_search_form($form_state) {
+	$form = array();
+	
+	$form['imei_search'] = array(
+		'#type' => 'textfield',
+		'#title' => 'IMEI Search',
+		'#default_value' => $_SESSION['imei_search'],
+		'#size' => 20
+	);
+	
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#title' => 'Search',
+		'#attributes' => array('style' => 'position: absolute; top: -100px; left: -100px;')
+	);
+	
+	return $form;
+}
+
+function unlock_order_imei_search_form_submit($form, &$form_state) {
+	$_SESSION['imei_search'] = $form_state['values']['imei_search'];
+}
+
+function unlock_order_Sec2Time($time){
+  if(is_numeric($time)){
+    $value = array(
+      "years" => 0, "days" => 0, "hours" => 0,
+      "minutes" => 0, "seconds" => 0,
+    );
+	
+	$content = "";
+    if($time >= 31556926){
+      $value["years"] = floor($time/31556926);
+      $time = ($time%31556926);
+    }
+    if($time >= 86400){
+      $value["days"] = floor($time/86400);
+      $time = ($time%86400);
+    }
+    if($time >= 3600){
+      $value["hours"] = floor($time/3600);
+      $time = ($time%3600);
+    }
+    if($time >= 60){
+      $value["minutes"] = floor($time/60);
+      $time = ($time%60);
+    }
+    $value["seconds"] = floor($time);
+	$flag = true;
+	foreach($value as $interval => $value) {
+		if($value) {
+			$content .= $value.' '.$interval.' ';	
+			$flag = false;
+		}
+	}
+	if($flag) {
+		return "Instant";	
+	}
+    return $content;
+  }else{
+    return (bool) FALSE;
+  }
+}
+
+function unlock_order_format_code($order_code, $status, $tool_id) {
+	if($status == UNLOCK_FOUND) {
+		$order_code .= '<span class="instructions-view">[<a href="'.base_path().'unlock-instructions" rel="external">Instructions</a>]</span>';
+	}
+	return $order_code;
+}
+function unlock_order_format_timestamp($timestamp) {
+	if($timestamp == 0) {
+		$timestamp = '-';
+	} else {
+		$timestamp = format_date($timestamp, 'custom', "n/j/Y g:i a");
+	}
+	
+	return $timestamp;
+}
+
+function unlock_order_status($status) {
+	switch($status) {
+		case UNLOCK_PENDING:
+			return '<span class="order-pending">Pending</span>';
+		case UNLOCK_FOUND: 
+			return '<span class="order-found">Code Found</span>';
+		case UNLOCK_NOT_FOUND_NR:
+			return '<span class="order-notfound">Code Not Found</span>';
+		case UNLOCK_NOT_FOUND_R:
+			return '<span class="order-notfound">Code Not Found</span>';
+		case UNLOCK_CANCELED:
+			return '<span class="order-notfound">Canceled</span>';
+		default:
+			return '<span class="order-pending">Pending</span>';
+	}
+}
+
+//Edit Profile View to Display Orders
+function unlock_order_menu_alter(&$items) {
+	$items['user/%user/view']['title'] = 'Orders';
+}
+
+function unlock_order_theme($existing, $type, $theme, $path) {
+	return array(
+		'unlock_details' => array(
+			'variables' => array('tool_name' => NULL, 'description' => NULL, 'process_time' => NULL, 'price' => NULL, 'supported' => NULL),
+			'function' => 'theme_unlock_details',
+			'file'	=> 'unlock_order_theme.inc'
+		)
+	);
+}
+
+function unlock_order_markup_price($method_id, $price) {
+	//markup price with preferences
+	global $user;
+	if(!user_access("administer user credits system")) {
+		foreach($user->roles as $rid => $role) {
+			if(unlock_order_markup_for_rid($rid, $price)) {
+				break;	
+			}
+		}
+	}
+
+	return number_format($price, 2);
+}
+
+function unlock_order_markup_for_rid($rid, &$price) {
+	$step = variable_get('unlock_order_pricing_increments', 0.5);
+	$max_price = variable_get('unlock_order_pricing_limit', 18);
+
+	$values = unserialize(variable_get('unlock_order_pricing', ''));
+	$range = range(0, $max_price, $step);
+
+	if(array_key_exists($rid, $values)) {
+		foreach($range as $key => $markup_range) {
+			if(($price >= $markup_range && $price < $markup_range+$step) || ($key == count($range)-1)) {
+				if($values[$rid][$key]) {
+					$price += $values[$rid][$key];	
+				} else {
+					$price += $values['default_markup'];
+				}
+				break;
+			}
+		}
+
+		return true;
+	} else {
+		return false;
+	}
+}
+
+/*Cron job that checks and updates order statuses. Use drush to avoid script timeouts.*/
+function unlock_order_cron() {
+	//Please make sure to run cron frequently
+	unlock_order_update_orders_from_api();
+	
+	//Send admin notifications
+	$credits = (float)da_user_credits_fetch();
+	$threshold = (float)variable_get('unlock_api_threshold', 0);
+	$last_reminder = variable_get('unlock_api_last_reminder', 0);
+        $time_since_reminder = time()-$last_reminder;
+	//Remind after more than 3 days.
+	if($credits < $threshold && $time_since_reminder > 259200) {
+		drupal_mail('unlock_order', 'manageremail', variable_get('unlock_api_username', 'asad@dadesigners.com'), language_default(), array('credits' => $credits, 'threshold' => $threshold), variable_get('site_mail', ''));
+		variable_set('unlock_api_last_reminder', time());
+	}
+}
+
+function unlock_order_remove_duplicate_refs() {
+	$duplicate_orders = db_query("SELECT remote_order_id, count(remote_order_id) AS duplicates FROM {unlock_orders} GROUP BY remote_order_id HAVING duplicates > 1 AND remote_order_id <> 'RECYCLED'");
+
+	while($duplicate_order = db_fetch_object($duplicate_orders)) {
+		$i = 0;
+		$orders = db_query("SELECT order_id FROM {unlock_orders} WHERE remote_order_id = '%s' ORDER BY order_id ASC", $duplicate_order->remote_order_id);
+	
+		while($i < ($duplicate_order->duplicates-1)) {
+			$order = db_fetch_object($orders);
+			db_query("UPDATE {unlock_orders} SET remote_order_id = concat(remote_order_id, '%s') WHERE order_id = %d", '_oldOrder_'.$i, $order->order_id);
+			$i++;
+		}
+	}
+}
+
+function unlock_order_update_orders_from_api($uid = 0) {
+	//Remove duplicate remote order ids from the bitch api
+	unlock_order_remove_duplicate_refs();
+
+	if($uid) {
+		$remote_orders = db_query("SELECT DISTINCT uo.remote_order_id FROM {unlock_orders} uo WHERE uo.status = %d AND uo.user_id = %d", UNLOCK_PENDING, $uid);
+	} else {
+		$remote_orders = db_query("SELECT DISTINCT uo.remote_order_id FROM {unlock_orders} uo WHERE uo.status = %d", UNLOCK_PENDING);
+	}
+
+	while($remote_order = db_fetch_object($remote_orders)) {
+		$orders = unlock_order_get_local_remote_orders($remote_order->remote_order_id);
+		$remote_order = unlock_api_get_order_id($remote_order->remote_order_id);
+
+		if($remote_order['status'] == 'COMPLETED') {
+			if(isset($remote_order['imei_orders']['unlockcode'])) {
+				//Only single orders are supported atm
+				unlock_order_update_order($orders[0]->order_id, $orders[0]->user_id, $orders[0]->price, $remote_order['imei_orders']['unlockcode'], $orders[0], $orders[0]->cust_email);
+			} else {
+				//Multiple Orders
+				foreach($orders as $order) {
+					foreach($remote_order['imei_orders'] as $key => $imei_order) {
+						if(is_numeric($key) && strpos($order->imei, $imei_order['imei']) !== FALSE) {
+							unlock_order_update_order($order->order_id, $order->user_id, $order->price, $imei_order['unlockcode'], $order, $order->cust_email);
+						}
+					}
+				}
+			}
+		} elseif($remote_order['status'] == 'N_EXIST') {
+			foreach($orders as $order) {
+				//Change status to UNLOCK_CANCELED
+				unlock_order_update_status($order->order_id, UNLOCK_CANCELED);
+			}
+		}
+	}
+}
+
+function unlock_order_get_local_remote_orders($remote_order_id) {
+	$final_orders = array();
+	$orders = db_query("SELECT uo.order_id, uo.user_id, uo.imei, uo.cust_email, uo.price, uo.remote_order_id, uo.notes FROM {unlock_orders} uo WHERE uo.remote_order_id = '%s'", $remote_order_id);
+	while($order = db_fetch_object($orders)) {
+		$final_orders[] = $order;
+	}
+	
+	return $final_orders;
+}
+
+function unlock_order_update_order($order_id, $user_id, $price, $code, $order, $cust_email = '') {
+	global $language;
+	$user = user_load($user_id);
+	
+	if($code == 'Not Found') {
+		//Refund User and change status to UNLOCK_NOT_FOUND_R
+		da_user_credits_add_credits($price, $user_id);
+		unlock_order_update_status($order_id, UNLOCK_NOT_FOUND_R);
+		$order->status = UNLOCK_NOT_FOUND_R;
+	} else {
+		//Update unlock Code and change status to UNLOCK_FOUND
+		unlock_order_update_status($order_id, UNLOCK_FOUND);
+		unlock_order_update_code($order_id, $code);
+		$order->status = UNLOCK_FOUND;
+		if($cust_email) {
+			drupal_mail('unlock_order', 'customeremail', $cust_email, $language, array('order' => $order, 'account' => $user, 'code' => $code), $user->mail);
+		}
+	}
+	
+	drupal_mail('unlock_order', 'useremail', $user->mail, $language, array('order' => $order, 'account' => $user, 'code' => $code), variable_get('site_mail', ''));
+	unlock_order_update_completion($order_id);
+}
+
+function unlock_order_update_status($order_id, $new_status) {
+	$order = (object)array('order_id' => $order_id, 'status' => $new_status);
+	drupal_write_record('unlock_orders', $order, 'order_id');
+}
+
+function unlock_order_update_completion($order_id) {
+	$order = (object)array('order_id' => $order_id, 'ctimestamp' => time());
+	drupal_write_record('unlock_orders', $order, 'order_id');
+}
+
+function unlock_order_update_code($order_id, $code) {
+	$order = (object)array('order_id' => $order_id, 'code' => $code);
+	drupal_write_record('unlock_orders', $order, 'order_id');
+}
+
+function unlock_tools_dropdown_form($form_state) {
+	drupal_add_js(drupal_get_path('module', 'unlock_order').'/js/unlock_tools_dropdown_form.js');
+
+	$tools = unlock_api_get_SortedMethodList();
+	$options = array();
+	$options[''][0] = 'Please Select Tool';
+	$options['Carrier Unlock Tools'] = unlock_tools_dropdown_process('CarrierTools', $tools);
+	$options['Manufacturer Unlock Tools'] = unlock_tools_dropdown_process('ManufacturerTools', $tools);
+	
+	$form = array();
+	$form['tool-dropdown-fieldset'] = array(
+		'#type' => 'fieldset',
+		'#title' => 'Quick Tool Select'
+	);
+	
+	$form['tool-dropdown-fieldset']['tool-dropdown'] = array(
+		'#type' => 'select',
+		'#description' => 'Please select a desired tool to jump to.',
+		'#options' => $options,
+		'#attributes' => array('class' => 'tool-dropdown-selection')
+	);
+	
+	
+	return $form;
+}
+
+function unlock_tools_dropdown_process($key, $tools) {
+	$options = array();
+//	unset($tools);   //Simulate API going down
+	if(isset($tools)) {
+		foreach($tools[$key] as $tool) {
+			$options[$tool['country']][$tool['tool_id']] = $tool['ToolName'];
+		} 
+	} else {
+		drupal_set_message("Our servers are down for maintenance. Please try again momentarily. We appreciate your business, and are working very hard to provide you with a one stop portal for all of your unlocking needs. Thank you for your patience.");
+	}
+
+	
+	return $options;
+}
+
+function unlock_order_mail($key, &$message, $params) {
+	$variables = array(
+		'%site_name' => variable_get('site_name', 'UnlockBazaar.com'),
+	);
+
+	if($key == 'customeremail' || $key == 'useremail') {
+		$account = $params['account'];
+		$order = $params['order'];
+		profile_load_profile($account);
+
+		foreach($account as $field => $value) {
+			if(is_string($value)) {
+				$variables['%'.$field] = $value;
+			}
+		}
+		
+		foreach($order as $field => $value) {
+			if(is_string($value) || is_integer($value)) {
+				if($field == 'status') {
+					$variables['%'.$field] = drupal_html_to_text(unlock_order_status($value));
+				} else {
+					$variables['%'.$field] = $value;
+				}
+			}
+		}
+
+		$variables['%code'] = $params['code'];
+
+		if($key == 'customeremail') {
+			$message['subject'] = 'You Unlock Code is Ready';
+			$message['headers'] = array('From' => variable_get('site_mail', ''), 'Reply-To' => $account->mail);
+		} else {
+			$message['subject'] = 'Order Status Update at '.variable_get('site_name', 'UnlockBazaar.com');
+			$message['headers'] = array('From' => variable_get('site_mail', ''));
+		}
+	} elseif($key == 'manageremail') {
+		$variables['%credits'] = $params['credits'];
+		$variables['%threshold'] = $params['threshold'];
+		$message['subject'] = 'WARNING: Credits on website too low';
+		$message['headers'] = array('From' => variable_get('site_mail', ''));
+	}
+	
+	$message['headers']['Return-Path'] = variable_get('site_mail', '');
+	$message['headers']['Errors-To'] = variable_get('site_mail', '');
+	
+	$message['headers']['Content-Type'] = 'text/html; charset=UTF-8; format=flowed';
+	$message['body'][] = strtr(variable_get($key, ''), $variables);
+}

@@ -1,0 +1,278 @@
+@font-face {
+	font-family: 'AvenirLTStd';
+	src: url('../fonts/avenirltstd-medium-webfont.eot');
+	src:  local('☺'), url('../fonts/AvenirLTStd-Medium.woff') format("woff");
+}
+form {
+	clear: both;	
+}
+h1, h2, h3, h4, h5, h6 {
+	font-family: 'AvenirLTStd', Verdana, Arial, Helvetica, sans-serif;
+	font-weight: normal;
+}
+p {
+	line-height: 20px;
+	color: #666;
+	font-size: 11px;
+}
+.primary_nav ul li a {
+	font-family: 'AvenirLTStd', Verdana, Arial, Helvetica, sans-serif;
+	font-size: 13px;
+	text-align:center;
+}
+
+/*Fields*/
+.field-field-artist-cv {
+	float: left;	
+}
+.field-field-artist-work {
+	width: 690px;
+}
+.field-field-artist-work, .field-field-artist-work .field-item {
+	float: left;	
+}
+
+.field-field-artist-work .field-item {
+	margin: 0 5px 5px 0;	
+}
+.field-field-featured-artist {
+	margin: 5px 0 0;	
+}
+.node-type-exhibition .field-field-artist-work {
+	margin: 10px 0 0;	
+}
+/*Exhibition View*/
+.view-exhibitions, .view-exhibitions .views-field-field-event-date-value, .view-exhibitions .views-field-body, .view-exhibitions .views-field-title, .view-exhibitions .views-field-field-featured-artist-nid, .view-exhibitions .views-field-field-cover-image-fidf {
+	float: left;
+	min-height: 160px;
+}
+.exhibition-headings {
+	width: 930px;	
+}
+.exhibition-headings, .exhibition-headings .field-heading {
+	float: left;	
+}
+.exhibition-headings .field-heading {
+	margin: 0 0 5px;	
+}
+.view-exhibitions .field-content {
+	margin-right: 10px;
+}
+.view-exhibitions .views-field-body, .exhibition-headings .exhibition-details {
+	width: 214px;
+}
+.view-exhibitions .views-field-title, .view-exhibitions .views-field-field-featured-artist-nid, .exhibition-headings .exhibition-title, .exhibition-headings .exhibition-artist {
+	width: 148px;
+}
+.view-exhibitions .views-field-field-cover-image-fid {
+	width: 225px;	
+	float: left;
+}
+.view-exhibitions .views-field-field-event-date-value, .exhibition-headings .exhibition-date {
+	 width: 195px;
+}
+.view-exhibitions p {
+	margin-top: 0;	
+}
+.view-exhibitions  .views-row {
+	padding: 10px 0 0;
+	background: url(../images/dots.png) repeat-x;
+	float: left;
+}
+.view-exhibitions .views-field-title {
+	font-style: italic;
+}
+.view-front .field-content {
+	text-align: center;	
+}
+.view-front .views-field-field-cover-image-fid {
+	margin-bottom: 10px;	
+}
+.view-front .views-field-title a {
+	font-style: italic;
+}
+.view-front .views-field-field-featured-artist-nid, .view-front .views-field-title, .view-front .views-field-field-event-date-value {
+	float: right;
+	clear: both;
+}
+/*Contact Form*/
+p.contactinfo {
+	float: left;
+	margin: 10px 0 15px;
+}
+.googlemap {
+	float: right;	
+}
+#contact-mail-page .form-item {
+	clear: left;	
+}
+/*Parent Reference*/
+.parent-nodes, .filefield-file {
+	float: left;
+	margin: 10px 0 0 17px;
+	width: 223px;
+}
+.field-field-artist-url {
+	float: left;
+	margin-left: 17px;
+	width: 223px;
+}
+.parent_node {
+	margin: 0 0 5px;	
+}
+.parent_node a {
+	font-style: italic;	
+}
+.node-type-artist p, .node-type-exhibition p {
+	float: left;
+	margin: 10px 17px 0;
+	width: 206px;
+}
+.view-front .views-field-field-other-artists-value {
+	float: right;
+	clear: both;	
+}
+#content-id-13235 h1 {
+	display: none;	
+}
+#block-views-artists-block_1 h2 {
+	margin: 0 0 10px;	
+}
+.views-field-field-cover-image-fid {
+	text-align: center;	
+}
+/*Breadcrumbs*/
+.article-title-crumb h1.title {
+	float: left;	
+}
+.article-title-crumb {
+	float: left;
+	width: 100%;
+	margin-top: 20px;
+}
+.article-title-crumb .breadcrumb {
+	float: right;
+	margin-top: 5px;
+	color: #aaa;
+	position: relative;
+	z-index: 11;
+}
+.article-title-crumb .breadcrumb a {
+	color: #aaa;
+}
+.article-title-crumb .breadcrumb a:hover {
+	color: #B10700;
+}
+.tabs {
+	clear: both;	
+}
+#content-id-13235 .tabs {
+	display: none;	
+}
+#block-views-artists-block_1, #block-views-artists-block_2 {
+	position: relative;
+	top: -27px;
+	z-index: 10;
+}
+
+.footer-message {
+	width: 814px;
+	text-align: right;
+}
+
+.footer ul.menu li {
+	margin: 5px 20px 2px 0;
+}
+
+#block-menu-menu-footer-menu {
+	float : right;
+}
+
+/*-- ------------testing----------- --*/
+
+@media only screen and (max-width: 480px) {
+
+	.container {
+  width: 100%;
+}
+
+body {
+  font: 1em Verdana, Arial, Helvetica, sans-serif;
+
+}
+
+.header {
+  float: none;
+}
+
+.logo {
+  float: none;
+}
+
+.header_left {
+  float: none;
+}
+.search_box {
+  float: none;
+  }
+
+.primary_nav {
+  float: none;
+  margin: 61px 0 10px;
+}
+
+.primary_nav ul {
+  float: none;
+}
+.primary_nav ul li {
+  float: none;
+}
+
+.primary_nav_js_overlay {
+  position: relative;
+  margin-top: -9%;
+}
+.content {
+  float: none;
+}
+
+.no-bars {
+  width: 100%;
+
+}
+
+.article-title-crumb {
+  float: none;
+  width: 100%;
+  margin-top: 49px;
+}
+.article-title-crumb .breadcrumb {
+  float: none;
+}
+
+.article-title-crumb h1.title {
+  float: none;
+}
+.exhibition-headings, .exhibition-headings .field-heading {
+  visibility: hidden;
+   margin: 0 0 -15px;
+}
+.exhibition-headings .field-heading {
+  margin: 0 0 -15px;
+}
+
+.view-exhibitions, .view-exhibitions .views-field-field-event-date-value, .view-exhibitions .views-field-body, .view-exhibitions .views-field-title, .view-exhibitions .views-field-field-featured-artist-nid, .view-exhibitions .views-field-field-cover-image-fidf {
+  float: none;
+  min-height: 45px;
+}
+
+.view-exhibitions .views-row {
+  padding: 10px 0 0;
+  background: url(../images/dots.png) repeat-x;
+  float: none;
+  width: 100%;
+  overflow: hidden;
+}
+
+
+}

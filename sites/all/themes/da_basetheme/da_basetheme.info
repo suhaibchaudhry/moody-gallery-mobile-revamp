@@ -1,0 +1,21 @@
+name = DA Base Theme
+description = Tableless Base Theme.
+core = 6.x
+engine = phptemplate
+
+regions[left] = Left sidebar
+regions[right] = Right sidebar
+regions[content] = Content
+regions[top_pane] = Top Pane
+regions[header] = Header
+regions[node_region] = Node Region
+regions[header_two] = Second Header
+regions[footer] = Footer
+
+stylesheets[all][] = css/fusion_style.css
+stylesheets[all][] = css/style.css
+stylesheets[all][] = css/blocks.css
+stylesheets[print][] = css/print.css
+scripts[] = js/fading_nav.js
+scripts[] = js/default_text.js
+scripts[] = js/child_nav.js

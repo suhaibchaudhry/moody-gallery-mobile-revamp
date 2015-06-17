@@ -1,0 +1,6 @@
+name = RMA
+description = Manages product returns for both employees and customers.
+package = D.A. CRM
+dependencies[] = uc_order
+dependencies[] = order_advanced_search
+core = 6.x

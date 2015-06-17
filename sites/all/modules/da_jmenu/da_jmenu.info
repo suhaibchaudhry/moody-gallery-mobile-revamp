@@ -1,0 +1,4 @@
+name = JMenu
+description = A JQuery collapsable menu that allows children of links to be collapsible.
+package = D.A. Custom Modules
+core = 6.x

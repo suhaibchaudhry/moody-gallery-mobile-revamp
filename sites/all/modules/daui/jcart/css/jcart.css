@@ -1,0 +1,78 @@
+.jcart-window {
+	width: 345px;
+	border: 1px solid #CCC;
+	z-index: 9999;
+	position: absolute;
+	background: #fff;
+	top: 45px;
+	padding: 0 10px;
+}
+
+.jcart-preloader {
+	background: url('../images/preloader.gif') no-repeat;
+	width: 50px;
+	height: 50px;
+	margin: 62px auto;
+}
+
+.jcart-window p.empty-message {
+	margin: 62px auto;
+	line-height: 50px;
+	text-align: center;
+}
+.jcart-close {
+	float: left;
+	width: 345px;
+	border-bottom: 1px solid #ccc;
+	margin-bottom: 5px;
+	font-size: 11px;
+}
+.jcart-close a {
+	float: right;
+	margin: 5px 10px;
+}
+.jcart-close p {
+	float: left;
+	margin: 5px 0;
+}
+.jcart-item {
+	float: left;
+	width: 115px;
+	text-align: center;
+	margin: 0 0 8px;
+}
+.jcart-item .title {
+	padding: 0 2px;
+	height: 35px;
+	margin: 0 0 2px;
+}
+.jcart-subtotal {
+	clear: both;
+	background: #EAEAEA;
+	margin: 5px 0;
+	float: left;
+	width: 325px;
+	padding: 0 10px 0;
+}
+.jcart-subtotal p.subtotal {
+	float: left;
+	font-size: 11px;
+	padding: 7px 0;
+}
+.jcart-subtotal p.view-cart {
+	float: right;
+	font-size: 11px;
+	padding: 7px 0;	
+}
+
+.jcart-subtotal p.jcheckout {
+	float: right;	
+}
+.jcart-subtotal p.jcheckout a {
+	text-indent: -9999px;
+	background: url('../images/checkout.gif');
+	display: block;
+	width: 62px;
+	height: 20px;
+	margin: 4px 0 0 6px;
+}

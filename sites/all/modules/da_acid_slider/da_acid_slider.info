@@ -1,0 +1,5 @@
+name = Acid Slider
+description = A highly customizable CCK image slider, with two images per slide.
+package = D.A. Custom Modules
+dependencies[] = jquery_update
+core = 6.x

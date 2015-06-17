@@ -1,0 +1,6 @@
+name = Order IP
+description = Displays the IP address of the customer with geo IP information from ipinfodb API.
+package = D.A. CRM
+dependencies[] = uc_order
+dependencies[] = jquery_update
+core = 6.x

@@ -1,0 +1,53 @@
+<?php
+function crm_endicia_sync_cron() {
+	//Make hard coded info dynamic when writing a better pane for displaying shipping information
+	$sql = "SELECT * FROM {crm_endicia_postback} WHERE synced = 0";
+	$postbacks = db_query($sql);
+	while($postback = db_fetch_object($postbacks)) {
+		$order = uc_order_load($postback->order_id);
+		
+		$shipment = new stdClass;
+		$shipment->order_id = $postback->order_id;
+		$shipment->o_first_name = 'Mohammad';
+		$shipment->o_last_name = 'Danish';
+		$shipment->o_company = 'Wireless Galaxy';
+		$shipment->o_street1 = '5730 Bintliff Dr.';
+		$shipment->o_street2 = '';
+		$shipment->o_city = 'Houston';
+		$shipment->o_zone = '57';
+		$shipment->o_postal_code = '77036';
+		$shipment->o_country = '840';
+		$shipment->d_first_name = $order->delivery_first_name;
+		$shipment->d_last_name = $order->delivery_last_name;
+		$shipment->d_company = $order->delivery_company;
+		$shipment->d_street1 = $order->delivery_street1;
+		$shipment->d_street2 = $order->delivery_street2;
+		$shipment->d_city = $order->delivery_city;
+		$shipment->d_zone = $order->delivery_zone;
+		$shipment->d_postal_code = $order->delivery_postal_code;
+		$shipment->d_country = $order->delivery_country;
+		$shipment->shipping_method = 'endicia';
+		$shipment->accessorials = 'Priority Mail';
+		$shipment->carrier	= 'USPS';
+		$shipment->transaction_id = $postback->transaction_id;
+		$shipment->tracking_number = $postback->tracking_number;
+		$shipment->ship_date = time();
+		$shipment->expected_delivery = time()+1296000;
+		$shipment->cost = 0;
+		drupal_write_record('uc_shipments', $shipment);
+				
+		$package = new stdClass;
+		$package->order_id = $postback->order_id;
+		$package->shipping_type = 'small_package';
+		$package->length = 0;
+		$package->width = 0;
+		$package->height = 0;
+		$package->length_units = 'in';
+		$package->value = 0;
+		$package->sid = $shipment->sid;
+		$package->tracking_number = $postback->tracking_number;
+		drupal_write_record('uc_packages', $package);
+		
+		db_query("UPDATE {crm_endicia_postback} SET synced = 1 WHERE postback_id = %d", $postback->postback_id);
+	}
+}

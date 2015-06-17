@@ -1,0 +1,5 @@
+name = Storm Invoice Charge
+description = "Allows Storm invoices to be charged with the authorize.net gateway. Courtesy D.A. Designers."
+dependencies[] = storminvoice
+package = Storm
+core = 6.x

@@ -1,0 +1,189 @@
+<?php
+function google_feed_perm() {
+	return array('export content');	
+}
+
+function google_feed_forms() {
+	$forms = array();
+	$forms['google_feed_export_form'] = array(
+		'callback' => 'google_feed_export_form_builder',
+	);
+	
+	return $forms;
+}
+
+function google_feed_export_form_builder(&$form_state) {
+	$form = array();
+	
+	$form['export'] = array(
+		'#type' => 'submit',
+		'#value' => t('Export Google Feed'),
+		'#submit' => array('_google_feed_process')
+	);
+	
+	return $form;
+}
+
+function _google_feed_process($form, &$form_state) {
+	$dir = file_directory_path().'/google_feeds';
+	if(file_check_directory($dir, FILE_CREATE_DIRECTORY, 'export')) {
+		$output_location = file_directory_path().'/google_feeds/google_feed.tmp';
+		
+		global $base_url;
+		$header = '<?xml version="1.0" encoding="UTF-8" ?>'."\n";
+		$header .= '<rss version ="2.0" xmlns:g="http://base.google.com/ns/1.0">'."\n";
+		$header .= '<channel>'."\n";
+		$header .= '<title>Product Feed - '.variable_get('site_name', "").'</title>'."\n";
+		$header .= '<description>Concise data feed of products</description>'."\n";
+		$header .= '<link>'.$base_url.base_path().'</link>'."\n";
+
+		$batch = array(
+			'title' => t('Exporting Google Feed'),
+			'operations' => array(array('_google_feed_batch_iteration', array($output_location))),
+			'finished' => '_google_feed_batch_finished'
+		);
+	
+		batch_set($batch);
+		
+		$fp = fopen($output_location, 'w');
+		fwrite($fp, $header);
+		fclose($fp);
+	}
+}
+
+function _google_feed_batch_iteration($output_location, &$context) {
+	$fp = fopen($output_location, 'a');
+
+	if(empty($context['sandbox'])) {
+		$context['sandbox']['progress'] = 0;
+		$context['sandbox']['current_node'] = db_result(db_query("SELECT MAX(n.nid) FROM {node} n WHERE n.type IN ('cellphones', 'batteries', 'chargers', 'headsets', 'pouches', 'sim_cards', 'screen_protectors', 'memory', 'data_cables', 'phone_holders', 'bluetooth', 'charms', 'misc', 'antennas_and_amplifiers');")) + 1;
+		
+		//Get just instock items. Have a configurable stock vocab, or cck field
+		//$context['sandbox']['max'] = db_result(db_query("SELECT COUNT(DISTINCT n.nid) FROM {node} n INNER JOIN {content_field_stock_type} s ON n.vid = s.vid WHERE n.type IN ('cellphones', 'batteries', 'chargers', 'headsets', 'pouches', 'sim_cards', 'screen_protectors', 'memory', 'data_cables', 'phone_holders', 'bluetooth', 'charms', 'misc', 'antennas_and_amplifiers') AND s.field_stock_type_value IN ('instock', 'backordered');"));
+		//$context['sandbox']['max'] = 30;
+		
+		//Get all stock types
+		$context['sandbox']['max'] = db_result(db_query("SELECT COUNT(DISTINCT n.nid) FROM {node} n WHERE n.type IN ('cellphones', 'batteries', 'chargers', 'headsets', 'pouches', 'sim_cards', 'screen_protectors', 'memory', 'data_cables', 'phone_holders', 'bluetooth', 'charms', 'misc', 'antennas_and_amplifiers');"));
+	}
+	
+	$limit = 2; //number of dumps per batch iteration
+	//$result = db_query_range("SELECT n.nid FROM {node} n INNER JOIN {content_field_stock_type} s ON n.vid = s.vid WHERE n.nid > %d AND n.type IN ('cellphones', 'batteries', 'chargers', 'headsets', 'pouches', 'sim_cards', 'screen_protectors', 'memory', 'data_cables', 'phone_holders', 'bluetooth', 'charms', 'misc', 'antennas_and_amplifiers') ORDER BY n.nid ASC", $context['sandbox']['current_node'], 0, $limit);
+	//Get newer ones first
+	$result = db_query_range("SELECT n.nid FROM {node} n WHERE n.nid < %d AND n.type IN ('cellphones', 'batteries', 'chargers', 'headsets', 'pouches', 'sim_cards', 'screen_protectors', 'memory', 'data_cables', 'phone_holders', 'bluetooth', 'charms', 'misc', 'antennas_and_amplifiers') ORDER BY n.nid DESC", $context['sandbox']['current_node'], 0, $limit);
+
+	while ($row = db_fetch_array($result)) {
+		$node = node_load($row['nid'], NULL, TRUE);
+		$context['results'][] = $node->nid;
+		$context['sandbox']['progress']++;
+		$context['sandbox']['current_node'] = $node->nid;
+		$context['message'] = 'Currently Exporting: '.$node->title;
+		fwrite($fp, _google_feed_item($node));
+	}
+	
+	if ($context['sandbox']['progress'] != $context['sandbox']['max']) {
+		$context['finished'] = $context['sandbox']['progress'] / $context['sandbox']['max'];
+	}
+	fclose($fp);
+}
+
+function _google_feed_batch_finished($success, $results, $operations) {
+	global $base_url;
+	
+	$output_location = file_directory_path().'/google_feeds/google_feed.tmp';
+	$previous_file = file_directory_path().'/google_feeds/google_feed.xml';
+	
+	$closure = '</channel>'."\n";
+	$closure .= '</rss>'."\n";
+	$fp = fopen($output_location, 'a');
+	fwrite($fp, $closure);
+	fclose($fp);
+	
+	if ($success) {
+		file_delete($previous_file);
+		file_move($output_location, $previous_file, FILE_EXISTS_REPLACE);
+		
+		$merchant_details = "\nPlease point your Google Merchant account to ".file_create_url($previous_file).", if you haven't already done so.";
+		$message = format_plural(count($results), 'One product was exported.'.$merchant_details, '@count products were exported.'.$merchant_details);
+  	} else {
+    	$message = t('An error occured while exporting, please contact D.A. Designers if problem presists.');
+	}
+  	drupal_set_message($message);
+}
+
+function google_feed_menu() {
+	$urls = array();
+	
+	$urls['admin/content/google_feed_export'] = array(
+		'title' => 'Export Google Feed',
+		'description' => 'Export all published products to a file in Google Merchant format.',
+		'access callback' => 'user_access',
+		'access arguments' => array('export content'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('google_feed_export_form'),
+	);
+	
+	return $urls;
+}
+
+function _google_feed_item($node) {
+	$title = check_plain($node->title);
+	$content = '';
+	if(!empty($title)) {
+		//Make sure title isn't empty
+		$content .= '<item>'."\n";
+		$content .= '<g:id>'.$node->nid.'</g:id>'."\n";
+		$content .= '<title>'.$title.'</title>'."\n";
+		$content .= '<link>'.url('node/'.$node->nid, array('absolute' => TRUE)).'</link>'."\n";
+		$content .= '<g:price>'.$node->sell_price.' USD</g:price>'."\n";
+		$content .= '<description>'.htmlspecialchars(html_entity_decode(preg_replace('/(&nbsp);*/', ' ', substr(filter_xss($node->teaser, array()), 0, 10000)))).'</description>'."\n";
+		$content .= _google_feed_get_term($node, 29, 'condition', array("Brand New" => "new", "Refurbished" => "refurbished"), "new");
+		$content .= _google_feed_get_term($node, 22, 'brand');
+		$content .= '<g:mpn>'.check_plain($node->model).'</g:mpn>'."\n";
+		$content .= '<g:image_link>'.url($node->field_image_cache[0]["filepath"], array('absolute' => TRUE)).'</g:image_link>'."\n";
+		$content .= '<g:product_type>'.check_plain($node->type).'</g:product_type>'."\n";
+		$content .= _google_feed_quantity($node->field_stock_type[0]["value"]);
+		$content .= '<g:availability>'._google_feed_convert_strings($node->field_stock_type[0]["value"], array("instock" => "in stock", "backordered" => "limited availability", "outofstock" => "out of stock", "discontinued" => "out of stock", "automatic" => "in stock"), "in stock").'</g:availability>'."\n";
+		$content .= _google_feed_get_term($node, 51, 'feature');
+		$content .= '<g:online_only>n</g:online_only>'."\n";
+		$content .= _google_feed_get_term($node, 26, 'manufacturer')._google_feed_get_term($node, 19, 'manufacturer')._google_feed_get_term($node, 33, 'manufacturer')._google_feed_get_term($node, 49, 'manufacturer')._google_feed_get_term($node, 46, 'manufacturer')._google_feed_get_term($node, 41, 'manufacturer')._google_feed_get_term($node, 35, 'manufacturer')._google_feed_get_term($node, 17, 'manufacturer')._google_feed_get_term($node, 38, 'manufacturer')._google_feed_get_term($node, 34, 'manufacturer')._google_feed_get_term($node, 39, 'manufacturer');
+		$content .= '<g:featured_product>'.$node->promote.'</g:featured_product>'."\n";
+		$content .= '<g:shipping_weight>'.$node->weight.' '.$node->weight_units.'</g:shipping_weight>'."\n";
+		$content .= '</item>'."\n";
+	}
+	
+	return $content;
+}
+
+function _google_feed_convert_strings($string, $mapper, $default = '') {
+	foreach($mapper as $key => $val) {
+		if($key == $string) {
+			return $val;
+		}
+	}
+	return $default;
+}
+
+function _google_feed_quantity($stock_value) {
+	if($stock_value == "outofstock" || $stock_value == "discontinued") {
+		return '<g:quantity>0</g:quantity>'."\n";
+	} else {
+	 	return '';	
+	}
+}
+
+function _google_feed_get_term($node, $vid, $tag, $mapper = array(), $default = '') {
+	$terms = taxonomy_node_get_terms_by_vocabulary($node, $vid);
+	foreach($terms as $term) {
+		if(empty($mapper)) {
+			return '<g:'.$tag.'>'.check_plain($term->name).'</g:'.$tag.'>'."\n";
+		} else {
+			return '<g:'.$tag.'>'.check_plain(_google_feed_convert_strings($term->name, $mapper)).'</g:'.$tag.'>'."\n";
+		}
+	}
+
+	if(empty($default)) {
+		return '';
+	} else {
+		return '<g:'.$tag.'>'.check_plain($default).'</g:'.$tag.'>'."\n";
+	}
+}

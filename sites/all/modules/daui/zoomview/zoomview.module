@@ -1,0 +1,88 @@
+<?php
+function zoomview_field_formatter_info() {
+	$formats = array();
+	if(module_exists('imagecache')) {
+		$rules = array();
+    	if (function_exists('imagecache_presets')) {
+     		$presets = imagecache_presets();
+      		foreach ($presets as $preset_id => $preset_info) {
+        		$rules[$preset_id] = $preset_info['presetname'];
+      		}
+    	} else {
+      		$rules = _imagecache_get_presets();
+    	}
+	}
+	foreach ($rules as $ruleid => $view_rule) {
+		foreach($rules as $d_ruleid => $d_view_rule) {
+			$formats['zoomview_imagefield_'. $view_rule.'__'.$d_view_rule] = array(
+        		'label' => 'Zoom View: '. $view_rule.' -> '.$d_view_rule,
+        		'field types' => array('image', 'filefield')
+      		);
+		}
+	}
+
+	return $formats;
+}
+
+function zoomview_theme() {
+	$themes = array();
+	foreach (imagecache_presets() as $src) {
+		foreach (imagecache_presets() as $dest) {
+			$themes['zoomview_formatter_zoomview_imagefield_'.$src['presetname'].'__'.$dest['presetname']] = array(
+				'arguments' => array('element' => NULL),
+				'function' => 'theme_zoomview_formatter_imagefield',
+			);
+		}
+	}
+	return $themes;
+}
+
+function theme_zoomview_formatter_imagefield($element) {
+	//Change jquery version
+	if(function_exists('jquery_update_change_path')) {
+		jquery_update_change_path(drupal_get_path('module', 'zoomview') .'/js');
+	} else {
+		drupal_set_message('A hacked version of JQuery Update for DAUI is required for proper functionality.', 'error');	
+	}
+
+	if (!module_exists("imagecache") || !module_exists("imagefield")) {
+		return;
+	}
+
+	drupal_add_css(drupal_get_path('module', 'zoomview').'/css/zoomview.jqzoom.css');
+	drupal_add_css(drupal_get_path('module', 'zoomview').'/css/zoomview.field.css');
+	drupal_add_js(drupal_get_path('module', 'zoomview').'/js/zoomview.jqzoom.js');
+	drupal_add_js(drupal_get_path('module', 'zoomview').'/js/zoomview.trigger.js');
+
+	$field_name = $element['#field_name'];
+	$item = $element['#item'];
+	$formatter = $element['#formatter'];
+	$node = node_load($element['#item']['nid']);
+	$presets = str_replace('zoomview_imagefield_', '', $formatter);
+	list($src_preset, $dest_preset) = explode('__', $presets);
+	return _zoomview_imagefield_imagecache($field_name, $item, $formatter, $node, $src_preset, $dest_preset);
+}
+
+function _zoomview_imagefield_imagecache($field_name, $item, $formatter, $node, $src_preset, $dest_preset) {
+	$content = '';
+	$class = '';
+	if(_zoomview_is_first($node->nid)) {
+		$content .= l(theme('imagecache', $dest_preset, $item['filepath'], $item['data']['alt'], $item['data']['title'], array('class' => 'zoomview-img-main')), $item['filepath'], array('attributes' => array('class' => 'zoomview', 'rel' => 'product-gallery-'.$node->nid), 'html' => true));
+		$content .= '</div><div class="field-item firstthumb">';
+		$class = 'zoomThumbActive';
+	}
+	$content .= l(theme('imagecache', $src_preset, $item['filepath'], $item['data']['alt'], $item['data']['title'], array('class' => 'zoomview-img-main')), '', array('attributes' => array('class' => $class, 'rel' => "{gallery: 'product-gallery-".$node->nid."', smallimage: '".base_path().imagecache_create_path($dest_preset, $item['filepath'])."',largeimage: '".base_path().$item['filepath']."'}"), 'html' => true, 'fragment' => 'switchImage', 'external' => TRUE));
+	return $content;
+}
+
+
+function _zoomview_is_first($node_id) {
+	//See if a field from this node id has occured before
+	static $cached_node_id = 0;
+	if($cached_node_id != $node_id) {
+		$cached_node_id = $node_id;
+		return true;
+	}
+
+	return false;
+}

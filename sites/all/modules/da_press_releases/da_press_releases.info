@@ -1,0 +1,4 @@
+name = Press Releases
+description = Provides pages and blocks that list nodes of type Press Releases and Research Center.
+package = D.A. Custom Modules
+core = 6.x

@@ -1,0 +1,5 @@
+; $Id$
+name = Poppup Forms
+description = Allows forms to be shown as popups so employees can add products with a link and come back to the original product.
+package = D.A. Custom Modules
+core = 6.x

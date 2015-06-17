@@ -1,0 +1,8 @@
+name = Quick Look
+description = Quick Look field formatter for image fields.
+package = D.A. UI
+core = 6.x
+
+dependencies[] = imagecache
+dependencies[] = uc_store
+dependencies[] = content

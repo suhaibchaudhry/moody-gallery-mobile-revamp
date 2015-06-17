@@ -1,0 +1,56 @@
+<?php
+function crm_order_flag_schema() {
+	$schema = array();
+	$schema['crm_order_flag'] = array(
+		'description' => 'Stores flags set by employees.',
+		'primary key' => array('flag_id'),
+		'fields' => array(
+			'flag_id' => array(
+				'description' => 'Primary key: Flag ID.', 
+				'type' => 'serial',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+			),
+			'order_id' => array(
+				'description' => 'The order to flag.', 
+				'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+			),
+			'flagged_for_uid' => array(
+				'description' => 'The user to flag for.', 
+				'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+			),
+			'flagger_uid' => array(
+				'description' => 'The user setting the flag.', 
+				'type' => 'int',
+        		'unsigned' => TRUE,
+        		'not null' => TRUE
+			),
+			'comments' => array(
+				'description' => 'Comments for the flag.',
+				'type' => 'varchar',
+				'length' => 200,
+				'not null' => FALSE
+			),
+			'flag_created' => array(
+				'description' => 'The Unix timestamp indicating when the flag was created.',
+				'type' => 'int',
+				'not null' => TRUE,
+				'default' => 0,
+			)
+		)
+	);
+
+	return $schema;
+}
+
+function crm_order_flag_install() {
+	drupal_install_schema('crm_order_flag');
+}
+
+function crm_order_flag_uninstall() {
+	drupal_uninstall_schema('crm_order_flag');
+}

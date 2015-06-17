@@ -1,0 +1,9 @@
+name = Email Registration 
+description = "For registration process without a username."
+core = 6.x
+; Information added by drupal.org packaging script on 2013-01-19
+version = "6.x-1.4"
+core = "6.x"
+project = "email_registration"
+datestamp = "1358554305"
+

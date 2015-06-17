@@ -1,0 +1,21 @@
+.jlogin-block {
+	position: absolute;
+	z-index: 10;
+	background-color: #fff;
+	border: 1px solid #DDDDDD;
+	-webkit-border-radium:0 5px 5px 5px;
+	-moz-border-radius:0 5px 5px 5px;
+	-khtml-border-radius:0 5px 5px 5px;
+	border-radius:0 7px 7px 7px;
+}
+.jlogin-link a {
+	background-color: #ffffff;
+	border-left: 1px solid #DDDDDD;
+	border-right: 1px solid #DDDDDD;
+	display: block;
+	line-height: 27px;
+	padding: 0 15px;
+	position: relative;
+	top: 1px;
+	z-index: 11;
+}

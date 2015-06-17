@@ -1,0 +1,60 @@
+<?php
+function da_uncollapser_form_alter(&$form, &$form_state, $form_id) {
+	//dpm($form);
+	//dsm($form_id);
+	if (isset($form['type']) && $form['type']['#value'] .'_node_form' == $form_id) {
+		/*
+		if(isset($form['path'])) {
+			$form['path']['#collapsed'] = FALSE;
+			$form['path']['#collapsible'] = FALSE;
+			$form['path']['path']['#required'] = TRUE;
+			$form['path']['path']['#description'] = "You must specify an alternative URL by which this node can be accessed. For example, type \"about\" when writing an about page. Use a relative path and don't add a trailing slash or the URL alias won't work.";
+		}
+		*/
+		
+		if(isset($form['taxonomy'])) {
+			$form['taxonomy']['#title'] = 'Categorization';
+			$form['taxonomy']['#collapsible'] = FALSE;
+		}
+		
+		//Make all products shippable
+		if(is_array($form['base']['shippable'])) {
+			$form['base']['shippable'] = array(
+				'#type' => 'hidden',
+				'#value' => 1
+			);
+		}
+		
+		//Make all unneeded shipping parameters constant. i.e. dimensions become 5x5x5.
+		if(is_array($form['base']['dimensions'])) {
+			$form['base']['dimensions']['#collapsible'] = TRUE;
+			$form['base']['dimensions']['#collapsed'] = TRUE;
+			if(empty($form['base']['dimensions']['dim_length']['#default_value'])) {
+				$form['base']['dimensions']['dim_length']['#default_value'] = 5;
+			}
+			if(empty($form['base']['dimensions']['dim_width']['#default_value'])) {
+				$form['base']['dimensions']['dim_width']['#default_value'] = 5;
+			}
+			if(empty($form['base']['dimensions']['dim_height']['#default_value'])) {
+				$form['base']['dimensions']['dim_height']['#default_value'] = 5;
+			}
+		}
+		
+		//Make the default weight 10 ounces or 0.625 lb
+		if(is_array($form['base']['weight']['weight']) && $form['base']['weight']['weight']['#default_value'] == 0) {
+			$form['base']['weight']['weight']['#default_value'] = 0.625;
+		}
+		//Make default add to card quantity hidden
+		if(is_array($form['base']['default_qty'])) {
+			$form['base']['default_qty']['#type'] = 'hidden';
+			$form['base']['default_qty']['#default_value'] = 1;
+			$form['base']['default_qty']['#value'] = 1;
+			
+			unset($form['base']['default_qty']['#title']);
+			unset($form['base']['default_qty']['#description']);
+			unset($form['base']['default_qty']['#weight']);
+			unset($form['base']['default_qty']['#size']);
+			unset($form['base']['default_qty']['#maxlength']);
+		}
+	}
+}

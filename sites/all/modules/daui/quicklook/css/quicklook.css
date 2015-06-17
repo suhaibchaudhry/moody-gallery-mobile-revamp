@@ -1,0 +1,65 @@
+.quicklook-btn-container {
+	position: relative;
+	top: -100px;
+	display: none;
+}
+.quicklook-dialog {
+	position: fixed;
+	display: none;
+	width: 800px;
+	background: #fff;
+	border: 1px solid #ccc;
+	-webkit-border-radium: 15px 15px 15px 15px;
+	-moz-border-radius: 15px 15px 15px 15px;
+	-khtml-border-radius:15px 15px 15px 15px;
+	border-radius:15px 15px 15px 15px;
+	z-index: 99999;
+}
+.dialogtitle {
+	width: 800px;
+	float: left;
+	background: #e1e1e1;
+	-webkit-border-radium: 15px 15px 0 0;
+	-moz-border-radius: 15px 15px 0 0;
+	-khtml-border-radius:15px 15px 0 0;
+	border-radius:15px 15px 0 0;
+}
+.dialogtitle p.title {
+	float: left;
+	font-size: 18pt;
+	padding: 10px 0 10px 15px;
+	text-shadow: 2px 2px 1px #FFFFFF;
+}
+.dialogtitle .closebtn {
+	float: right;
+	width: 28px;
+	height: 28px;
+	background: url('../images/closebtn.png');
+	cursor: pointer;
+	margin: 10px;
+}
+.quicklook-dialog .quicklook-items ul.imagelist li {
+	list-style: none outside none;
+}
+.quicklook-dialog .quicklook-items {
+	float: left;
+	margin: 0 0 0 10px;
+	width: 60px;
+}
+.quicklook-dialog .quicklook-items img {
+	cursor: pointer;
+}
+.quicklook-dialog .bigimage {
+	float: left;
+	width: 250px;
+	min-height: 15px;
+}
+.quicklook-dialog .dialogcontent {
+	float: left;
+	padding: 10px;
+}
+.quicklook-dialog .quickdetais {
+	float: left;	
+	width: 450px;
+	padding: 0 5px;
+}

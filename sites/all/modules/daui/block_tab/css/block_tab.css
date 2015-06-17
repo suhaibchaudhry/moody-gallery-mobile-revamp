@@ -1,0 +1,32 @@
+/* $Id: block_tab.css,v 1.1 2009/11/17 15:14:41 itarato Exp $ */
+
+
+.block_tab-titles {
+  
+}
+
+.block_tab-title {
+  background-color: #0073BA;
+  color: #FFFFFF;
+  cursor: pointer;
+  margin-right: 6px;
+  padding: 4px;
+}
+
+.block_tab-title.active {
+  font-weight: bold;
+  text-decoration: underline;
+  background-color: #4099CF;
+}
+
+.block_tab-title:hover {
+  background-color: #4099CF;
+}
+
+.block_tab-blocks {
+  
+}
+
+.block_tab-block {
+  
+}

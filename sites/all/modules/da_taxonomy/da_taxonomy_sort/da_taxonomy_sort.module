@@ -1,0 +1,85 @@
+<?php
+function da_taxonomy_sort_views_pre_render(&$view) {
+	if($view->name == 'taxonomy_term' && da_taxonomy_check_type($view->args, 'product')) {
+		$view->attachment_before = drupal_get_form('da_taxonomy_sort_widget_form');
+	}
+}
+
+function da_taxonomy_sort_widget_form($form_state) {
+	$options = array('Newest', 'Lowest Price', 'Higest Price', 'Name (A First)', 'Name (Z First)');
+
+	$form['taxonomy_sort'] = array(
+		'#type' => 'select',
+		'#title' => 'Sort By',
+		'#default_value' => da_taxonomy_sort_default(),
+		'#attributes' => array('onchange' => 'this.form.submit();'),
+		'#options' => $options
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => 'go',
+		'#attributes' => array('style' => 'display: none;'),
+	);
+	return $form;
+}
+
+function da_taxonomy_sort_widget_form_submit($form, &$form_state) {
+	$_SESSION['taxonomy_sort_selected'] = $form_state['values']['taxonomy_sort'];
+}
+
+function da_taxonomy_sort_default() {
+	if(isset($_SESSION['taxonomy_sort_selected'])) {
+		return $_SESSION['taxonomy_sort_selected'];
+	}
+
+	return 0;
+}
+
+function da_taxonomy_sort_views_query_alter(&$view, &$query) {
+	if($view->name == 'taxonomy_term' && isset($_SESSION['taxonomy_sort_selected']) && da_taxonomy_check_type($view->args, 'product')) {		
+		switch($_SESSION['taxonomy_sort_selected']) {
+			case 0:
+				break;
+			case 1:
+				$query->table_queue['uc_products'] = array(
+					'table' => 'uc_products',
+					'num' => 1,
+					'alias' => 'uc_products',
+					'join' => $query->get_join_data('uc_products', 'node'),
+					'relationship' => 'node'
+				);
+				unset($query->orderby);
+				$query->orderby[] = 'uc_products.sell_price ASC';
+				break;
+
+			case 2:
+				$query->table_queue['uc_products'] = array(
+					'table' => 'uc_products',
+					'num' => 1,
+					'alias' => 'uc_products',
+					'join' => $query->get_join_data('uc_products', 'node'),
+					'relationship' => 'node'
+				);
+				unset($query->orderby);
+				$query->orderby[] = 'uc_products.sell_price DESC';
+				break;
+
+			case 3:
+				unset($query->orderby);
+				$query->orderby[] = 'node.title ASC';
+				break;
+
+			case 4:
+				unset($query->orderby);
+				$query->orderby[] = 'node.title DESC';
+				break;
+		}
+	}
+}
+
+function da_taxonomy_check_type($args, $type) {
+	$args = explode(' ', $args[0]);
+	$term = taxonomy_get_term($args[0]);
+	$vocab = taxonomy_vocabulary_load($term->vid);
+	return in_array($type, $vocab->nodes);
+}

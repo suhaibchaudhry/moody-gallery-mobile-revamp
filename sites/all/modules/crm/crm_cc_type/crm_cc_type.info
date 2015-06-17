@@ -1,0 +1,6 @@
+name = CC Type
+description = Displays CC type on credit card pane.
+package = D.A. CRM
+dependencies[] = uc_order
+dependencies[] = uc_credit
+core = 6.x

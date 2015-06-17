@@ -1,0 +1,12 @@
+.throbbler {
+	height: 16px;
+	background: url('../images/loader.gif') no-repeat;
+}
+.crm_order_ip_geo img {
+	padding: 0 0 0 4px;
+}
+
+.crm_order_ip_geo {
+	margin: 5px 0 0;
+	line-height: 21px;
+}

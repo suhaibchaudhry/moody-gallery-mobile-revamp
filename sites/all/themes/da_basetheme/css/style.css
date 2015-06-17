@@ -1,0 +1,379 @@
+* {
+	outline: none;
+}
+*::selection {
+	background: #999; /* Safari */
+	color: #fff;
+}
+*::-moz-selection {
+	background: #999; /* Firefox */
+	color: #fff;
+}
+
+body {
+	font: 12px Verdana, Arial, Helvetica, sans-serif;
+	margin: 0;
+	padding: 0;
+	color: #000;
+}
+
+ul, ol, dl {
+	padding: 0;
+	margin: 0;
+}
+h1, h2, h3, h4, h5, h6, p {
+	margin: 0;
+	padding: 0;
+}
+h1, h2, h3, h4, h5, h6 {
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	font-weight: normal;
+}
+h1 {
+	font-size: 24px;
+	margin: 0 0 15px;
+}
+h2 {
+	font-size: 22px;	
+}
+h3 {
+	font-size: 20px;	
+}
+h4 {
+	font-size: 18px;	
+}
+h5 {
+	font-size: 16px;	
+}
+h4 {
+	font-size: 15px;	
+}
+a img {
+	border: none;
+}
+
+a:link, a:visited {
+	color: #42413C;
+	text-decoration: none;
+}
+a:hover, a:active, a:focus, li a.active {
+	color: #B10700;
+}
+
+.container {
+	width: 960px;
+	margin: 0 auto;
+}
+/*Header*/
+.header {
+	width: 100%;
+	margin: 10px 0;
+	float: left;
+}
+
+.logo {
+	float: left;
+}
+.header_right, .header_left {
+	float: right;	
+}
+.header_right {
+	clear: right;	
+}
+.search_box label {
+	display: none;
+}
+.search_box input.form-submit {
+	position: absolute;
+	top: -100px;
+}
+.search_box input.form-text {
+	border: 1px solid #ccc;
+	color: #A3A3A3;
+	padding: 4px 10px;
+	width: 164px;
+	-webkit-border-radium: 11px 11px 11px 11px;
+	-moz-border-radius: 11px 11px 11px 11px;
+	-khtml-border-radius: 11px 11px 11px 11px;
+	border-radius: 11px 11px 11px 11px;
+}
+.search_box {
+	margin: 4px 16px 0 0;
+	width: 164px;
+	float: right;
+}
+/*top nav*/
+.header_right ul {
+	margin-top: 7px;
+	float: right;
+	list-style: none outside none;	
+}
+.header_right ul li {
+	float: left;
+}
+.header_right ul li a {
+	background: url('../images/arrow.gif') no-repeat 0px 0px;
+	text-decoration: none;
+	margin: 0 15px 0 0;
+	font-size: 10px;
+	color: #a3a3a3;
+    padding: 0 0 0 12px;
+}
+/* Not needed since search is to the right */
+/*
+.header_right ul li.last a {
+	margin-right: 0;	
+}
+*/
+.header_right ul li  a:hover {
+	background-position: 0 -11px;
+	color: #b10700;
+}
+/*Tabs*/
+.tabs ul.primary {
+	margin: 0 0 10px;	
+}
+.tabs ul.secondary {
+	margin: 0 0 10px;
+    padding: 3px 0 12px;
+}
+/*Primary Nav*/
+.primary_nav {
+	float: left;
+	width: 100%;
+	margin: 0 0 10px;
+}
+.primary_nav ul {
+	float: left;
+	list-style: none outside none;
+}
+.primary_nav ul li {
+	float: left;
+}
+
+.primary_nav ul li a {
+	text-decoration: none;
+	font-family: Verdana, Arial, Helvetica, sans-serif;
+	font-size: 18px;
+	text-transform: uppercase;
+	color: #b10700;
+	margin: 0 3px 0 0;
+	border-bottom: 3px solid #b10700;
+	display: block;
+	background: #fff;
+}
+.primary_nav_js_overlay {
+    position: absolute;
+}
+
+.primary_nav_js_overlay ul li a {
+	color: #000;
+	border-color: #000;
+}
+.primary_nav_js_overlay ul li a.active {
+	color: #b10700;
+	border-color: #b10700;
+}
+/*system messages*/
+.system-messages {
+	float: left;
+	width: 960px;
+}
+/*Top Pane*/
+.top_pane {
+	float: left;
+	width: 100%;
+	margin: 0 0 10px;
+}
+.sidebar_left {
+	float: left;
+	width: 165px;
+	padding-bottom: 10px;
+}
+.content {
+	float: left;
+	padding: 0 15px 15px;
+}
+.content p, .cke_show_borders p {
+	margin: 10px 0;	
+}
+.both-bars {
+	width: 600px;
+}
+.one-bar {
+	width: 765px;
+}
+.no-bars {
+	width: 930px;
+}
+.content ul, .content ol {
+	margin: 0 0 0 15px;	
+}
+.sidebar_right {
+	float: left;
+	width: 165px;
+	padding: 10px 0;
+}
+
+.footer {
+	position: relative;/* this gives IE6 hasLayout to properly clear */
+	clear: both; /* this clear property forces the .container to understand where the columns end and contain them */
+	border-top: 1px solid #E9E9E9;
+}
+
+.footer p {
+	float: right;
+	color: #A3A3A3;
+	font-size: 11px;
+	margin: 5px 0 10px;
+}
+
+.clearfloat { /* this class can be placed on a <br /> or empty div as the final element following the last floated div (within the .container) if the .footer is removed or taken out of the .container */
+	clear: both;
+	height: 0;
+	font-size: 1px;
+	line-height: 0px;
+}
+
+/*Hide editing of authoring information, This is only for admins, for users play with permissions*/
+.admin .authored .fieldset-outer {
+	display: none;	
+}
+
+/*Comments*/
+#comments .comment:hover {
+	background: #eaeaea;
+}
+#comments textarea {
+	height: 125px;	
+}
+
+div.admin-panel h3 {
+	font-family: Verdana,Arial,Helvetica,sans-serif;
+}
+
+#comments #edit-preview {
+	display: none;	
+}
+.comment_reply a {
+	background: url('../images/reply.png') no-repeat;
+	display: block;
+    height: 16px;
+    padding: 0 0 0 18px;
+	margin-top: 10px;
+	width: 60px;
+}
+.comment_reply a:hover {
+	background-position: bottom left;	
+}
+
+/*Comment Notify Module*/
+#edit-notify-type-1-wrapper {
+	margin-left: 0;	
+}
+/*Submitted Date*/
+.submitted {
+	font-size: 11px;	
+	margin: 7px 0;
+}
+/*Lightbox*/
+#bottomNavClose {
+	background-image: url('../images/close.png');
+	background-color: transparent !important;
+}
+#loadingLink {
+	background-image: url('../images/loader.gif');	
+}
+#nextLink {
+	background-image: url('../images/next_alt.png');	
+}
+#prevLink {
+	background-image: url('../images/prev_alt.png');
+}
+
+/*Jlogin*/
+.block-jlogin, .block-jcart {
+	float: left;	
+}
+.jlogin-link, .jcart-link {
+	float: left;
+	margin-top: 8px;
+}
+.jlogin-link a, .jcart-link a {
+	background: url('../images/arrow.gif') no-repeat 0px 0px;
+	color: #A3A3A3;
+	border: none;
+	line-height: 11px;	
+	font-size: 10px;
+	padding: 0 15px;
+	position: relative;
+	top: 0;
+}
+
+.jlogin-link a {
+	z-index: 1000;	
+}
+
+.jlogin-link a:hover, .jcart-link a:hover {
+	background-position: 0 -11px;
+	color: #B10700;	
+}
+
+.jlogin-block {
+	padding: 12px;
+	width: 155px;
+	top: 12px;
+	z-index: 999;
+}
+/*Product Style*/
+.product-teaser {
+	float: left;
+    margin: 10px 19px 0 0;
+    width: 177px;	
+}
+.last-in-row {
+	margin-right: 0;	
+}
+.product-teaser strong {
+	display: block;
+	height: 45px;
+	overflow: hidden;
+	font-weight: normal;
+	text-align: center;
+}
+.product-teaser .field-field-image-cache {
+	margin: 5px 0;
+}
+/*Cart Fields*/
+.sell-price {
+	float: left;
+	margin-top: 10px;
+}
+/*Primary Menu Childrens*/
+.primary_children {
+	float: left;
+	width: 100%;
+}
+.primary_children ul.menu {
+	float: left;
+}
+.primary_children ul.menu li {
+	float: left;
+	list-style: none outside none;
+	margin: 0;
+}
+.primary_children ul.menu a {
+	display: block;
+	text-align:center;
+}
+/*Search Results*/
+.search-result {
+	clear: both;	
+}
+.search-result .image {
+	float: left;	
+}
+.login-false .jlogin-link a {
+	margin-top: 3px;
+	padding-left: 12px;
+}

@@ -1,0 +1,13 @@
+<?php
+function crm_better_comments_tapir_table_alter(&$comments) {
+	if(is_array($comments['#rows']) && isset($comments['#parameters'][0]) && ($comments['#parameters'][0] == 'op_order_comments_view_table' || $comments['#parameters'][0] == 'op_admin_comments_view_table')) {
+		$i = 0;
+		foreach($comments['#rows'] as $row) {
+			if(isset($row['user']) && is_numeric($row['user']['#value'])) {
+				$user = user_load($row['user']['#value']);
+				$comments['#rows'][$i]['user']['#value'] = l($user->name, 'user/'.$user->uid);
+			}
+			$i++;
+		}
+	}
+}

@@ -1,0 +1,66 @@
+<?php
+function crm_cc_type_order($op, &$arg1, $arg2) {
+	$cc_number = $arg1->payment_details["cc_number"];
+	
+	if($op == "total" && strlen($cc_number) > 4) {
+		_crm_cc_type_save_cc_type($arg1->order_id, _crm_cc_type_get_cc_type($cc_number));
+	} elseif($op == "delete") {
+		_crm_cc_type_delete_cc_type($arg1->order_id);
+	}
+}
+
+function _crm_cc_type_delete_cc_type($order_id) {
+	db_query("DELETE FROM {crm_cc_type} WHERE order_id = %d", $order_id);
+}
+
+function crm_cc_type_order_pane() {
+	$panes = array();
+	$panes[] = array(
+		'id' => 'crm_cc_type_pane',
+		'callback' => '_crm_cc_type_display',
+		'title' => t('Credit Card Type'),
+		'desc' => t('Shows the recorded credit card type.'),
+		'class' => 'pos-left',
+		'weight' => 4,
+		'show' => array('view')
+	);
+
+	return $panes;
+}
+
+function _crm_cc_type_display($op, $order) {
+	$cc_type = _crm_cc_type_fetch($order->order_id);
+	if($op == 'view' && !empty($cc_type)) {
+		return $cc_type;
+	} else {
+		return '';	
+	}
+}
+
+function _crm_cc_type_fetch($order_id) {
+	$order = db_fetch_object(db_query("SELECT ct.cc_type FROM {crm_cc_type} ct WHERE ct.order_id = %d", $order_id));
+	return $order->cc_type;
+}
+
+function _crm_cc_type_save_cc_type($order_id, $cc_type) {
+	$sql = "INSERT INTO {crm_cc_type} VALUES (%d, '%s') ON DUPLICATE KEY UPDATE cc_type = '%s';";
+	db_query($sql, $order_id, $cc_type, $cc_type);
+}
+
+function _crm_cc_type_get_cc_type($cc_number) {
+	if (ereg("^5[1-5][0-9]{14}$", $cc_number)) {
+		return "Mastercard";
+	} elseif (ereg("^4[0-9]{12}([0-9]{3})?$", $cc_number)) {
+		return "Visa";
+	} elseif (ereg("^3[47][0-9]{13}$", $cc_number)) {
+		return "American Express";
+	} elseif (ereg("^3(0[0-5]|[68][0-9])[0-9]{11}$", $cc_number)) {
+		return "Diners Club";
+	} elseif (ereg("^6011[0-9]{12}$", $cc_number)) {
+		return "Discover";
+	} elseif (ereg("^(3[0-9]{4}|2131|1800)[0-9]{11}$", $cc_number)) {
+		return "JCB";
+	} else {
+		return "Credit card";
+	}
+}

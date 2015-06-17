@@ -1,0 +1,4 @@
+name = Wholesale Price
+description = Implements a role based (ie. wholesale) pricing system.
+package = D.A. Custom Modules
+core = 6.x

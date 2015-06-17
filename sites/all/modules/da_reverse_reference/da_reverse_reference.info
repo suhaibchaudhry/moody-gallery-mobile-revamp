@@ -1,0 +1,4 @@
+name = Reverse Reference
+description = Reverse reference adds node ids and titles of the parent nodes to the child node's object.
+package = D.A. Custom Modules
+core = 6.x

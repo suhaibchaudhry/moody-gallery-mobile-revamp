@@ -1,0 +1,5 @@
+name = Wide Screen Slider
+description = A primarily widescreen friendly slider, that makes a block that slides CCK node with various easing formulas.
+package = D.A. UI
+dependencies[] = jquery_update
+core = 6.x

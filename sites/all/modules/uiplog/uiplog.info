@@ -1,0 +1,12 @@
+name = User IP Log
+description = Logs users IP to db stable on user login.
+core = 6.x
+version = VERSION
+dependencies[] = views
+
+; Information added by drupal.org packaging script on 2011-07-23
+version = "6.x-1.1"
+core = "6.x"
+project = "uiplog"
+datestamp = "1311423730"
+

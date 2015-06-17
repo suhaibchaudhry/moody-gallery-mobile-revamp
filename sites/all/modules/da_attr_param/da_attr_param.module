@@ -1,0 +1,40 @@
+<?php
+function da_attr_param_form_alter(&$form, &$form_state, $form_id) {
+	//dsm($form);
+	if(empty($form['oid'])) {
+		$disabled = TRUE;
+		$default = "Please save this option first";
+	} else {
+		$query = "SELECT parameter FROM {da_attr_param_xref} WHERE aid = %d AND oid = %d";
+		$result = db_query($query, $form['aid']['#value'], $form['oid']['#value']);
+		$option = db_fetch_object($result);
+		
+		$disabled = FALSE;
+		$default = $option->parameter;
+	}
+
+	if($form_id == 'uc_attribute_option_form') {
+		$form['parameter'] = array(
+			'#type' => 'textfield',
+			'#title' => 'Parameter',
+			'#description' => 'Supply a parameter to go with this attribute. For instance you will add the color hex value for a the color attribute option.',
+			'#disabled' => $disabled,
+			'#default_value' => $default,
+			'#required' => FALSE,
+			'#weight' => 2
+		);
+		
+		$form['#submit'][] = 'da_attr_param_submit_form';
+	}
+}
+
+function da_attr_param_submit_form(&$form, &$form_state) {
+	if(!empty($form_state['values']['parameter']) && !empty($form_state['values']['oid']) && !empty($form_state['values']['aid'])) {
+		$parameter = $form_state['values']['parameter'];
+		$oid = $form_state['values']['oid'];
+		$aid = $form_state['values']['aid'];
+		
+		$sql = "REPLACE INTO {da_attr_param_xref} SET aid = %d, oid = %d, parameter = '%s';";
+		$result = db_query($sql, $aid, $oid, $parameter);
+	}
+}

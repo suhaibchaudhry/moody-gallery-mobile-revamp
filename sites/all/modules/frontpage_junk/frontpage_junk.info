@@ -1,0 +1,4 @@
+name = "Frontpage Junk Remover"
+description = "Removes junk markup that gets pasted from Microsoft Frontpage"
+package = D.A. Custom Modules
+core = 6.x

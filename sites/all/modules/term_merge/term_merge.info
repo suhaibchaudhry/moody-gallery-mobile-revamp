@@ -1,0 +1,12 @@
+name = "Term Merge"
+description = "Offers ability to merge all the items tagged with term A and all those with term B."
+dependencies[] = taxonomy
+package = "Administration"
+
+core = 6.x
+; Information added by drupal.org packaging script on 2010-07-11
+version = "6.x-1.x-dev"
+core = "6.x"
+project = "term_merge"
+datestamp = "1278835935"
+

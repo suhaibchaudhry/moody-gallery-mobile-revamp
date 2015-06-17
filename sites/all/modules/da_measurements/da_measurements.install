@@ -1,0 +1,45 @@
+<?php
+/**
+ * Implementation of hook_schema().
+ */
+function da_measurements_schema() {
+	$schema = array();
+
+	$schema['da_measurements'] = array(
+		'description' => 'Store user measurements',
+		'fields' => array(
+			'uid' => array(
+				'type' => 'int',
+        		'not null' => TRUE,
+        		'default' => 0,
+				'description' => "User's {users}.uid.",
+			),
+			'measurements' => array(
+				'type' => 'varchar',
+				'length' => 500,
+				'not null' => TRUE,
+				'default' => ''
+			),
+		),
+		'indexes' => array(
+			'nid' => array('uid'),
+		),
+		'primary key' => array('uid'),
+	);
+
+	return $schema;
+}
+
+/**
+ * Implementation of hook_install().
+ */
+function da_measurements_install() {
+	drupal_install_schema('da_measurements');
+}
+
+/**
+ * Implementation of hook_uninstall().
+ */
+function da_measurements_uninstall() {
+	drupal_uninstall_schema('da_measurements');
+}

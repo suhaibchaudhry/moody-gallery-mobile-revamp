@@ -1,0 +1,21 @@
+<?php
+function fblike_menu() {
+	$urls['fblike-button'] = array(
+		"title" => 'FBlike Button', 
+    	"description" => 'IFrame to fb like button.',
+		"page callback" => 'fblike_button',
+		"access arguments" => array("access content"),
+		"type" => MENU_CALLBACK
+	);
+
+	return $urls;
+}
+
+function fblike_button($pagelink = '') {
+	print '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html xmlns="http://www.w3.org/1999/xhtml"><head><meta http-equiv="Content-Type" content="text/html; charset=utf-8" /><title>Facebook Like</title></head><body style="padding: 0;margin: 0;"><div id="fb-root"></div><script src="http://connect.facebook.net/en_US/all.js#appId=257012740986165&amp;xfbml=1"></script><fb:like href="'.urldecode($_GET['fburl']).'" send="false" width="450" show_faces="false" font=""></fb:like></body></html>';
+}
+
+function fblike_preprocess_node(&$vars) {
+	drupal_add_js(drupal_get_path('module', 'fblike').'/js/fblike.js');
+	$vars['fblike'] = '<div class="fblike-container"></div>';
+}

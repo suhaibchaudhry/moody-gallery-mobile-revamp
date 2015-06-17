@@ -1,0 +1,4 @@
+name = Customer Measurements
+description = Allow customers to edit female measurements.
+package = D.A. Custom Modules
+core = 6.x

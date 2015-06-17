@@ -1,0 +1,9 @@
+#edit-cpn-css,
+#edit-cpn-js {
+  height: 200px;
+}
+
+.CodeMirror {
+  border: 1px solid;
+  height: auto;
+}

@@ -1,0 +1,264 @@
+<?php
+function crm_rma_order($op, &$arg1, $arg2) {
+	if($op == "delete") {
+		db_query("DELETE FROM {crm_rma_requests} WHERE order_id = %d", $arg1->order_id);
+	}
+}
+
+function crm_rma_order_pane() {
+	$panes = array();
+	$panes[] = array(
+		'id' => 'crm_rma_customer',
+		'callback' => '_crm_rma_request',
+		'title' => t('Return Request'),
+		'desc' => t('Allows customers to file an RMA request.'),
+		'class' => 'abs-left',
+		'weight' => 10,
+		'show' => array('customer')
+	);
+	
+	$panes[] = array(
+		'id' => 'crm_rma_requests_status',
+		'callback' => '_crm_rma_requests_admin',
+		'title' => t('RMA Requests'),
+		'desc' => t('Change status of an RMA request.'),
+		'class' => 'abs-left',
+		'weight' => 10,
+		'show' => array('view')
+	);
+
+	return $panes;
+}
+
+function _crm_rma_requests_admin($op, $order) {
+	if($op == 'view') {
+		$legend = _crm_rma_legend();
+		$tables = array();
+		$requests = db_query("SELECT r.request_id, r.order_id, r.status, r.rma_number, r.data, r.reason FROM {crm_rma_requests} r WHERE r.order_id = %d", $order->order_id);
+		while($request = db_fetch_object($requests)) {
+			$list = array();
+			$data = unserialize($request->data);
+			foreach($data as $index => $selected) {
+				if(!$selected) {
+					$product = $order->products[$index];
+					$list[] = $product->title;
+				}
+			}
+			
+			$tables[] = array(
+				'RMA #' => $request->rma_number,
+				'Status' => $legend[$request->status],
+				'Reason' => $request->reason,
+				'Items' => theme('item_list', $list),
+				'update' => drupal_get_form('crm_rma_update_status_form', $request->request_id, $request->status)
+			);
+		}
+		if(!empty($tables)) {
+			return _crm_rma_render_simple_table($tables, 'crm_rma_request_table');
+		}
+	}
+	
+	return '';
+}
+
+function crm_rma_update_status_form(&$form_state, $request_id, $status) {
+	drupal_add_css(drupal_get_path('module', 'crm_rma').'/css/crm_rma_status_form.css');
+
+	$form = array();
+	$form['req_id'] = array(
+		'#type' => 'hidden',
+		'#value' => $request_id
+	);
+	$form['update_status'] = array(
+		'#type' => 'select',
+		'#default_value' => $status,
+		'#options' => _crm_rma_legend(),
+	);
+	$form['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('Update Status'),
+	);
+	
+	return $form;
+}
+
+function crm_rma_update_status_form_submit($form, &$form_state) {
+	$request = new stdClass;
+	$request->request_id = $form['#post']['req_id'];
+	$request->status = $form['update_status']['#value'];
+	drupal_write_record('crm_rma_requests', $request, 'request_id');
+	drupal_set_message('RMA status has been updated.');
+}
+
+function _crm_rma_render_simple_table($tables, $class) {
+	//Convert to a theming function
+	drupal_add_css(drupal_get_path('module', 'crm_rma').'/css/crm_rma_table.css');
+	
+	$content  = '';
+	foreach($tables as $table) {
+		$content .= '<table class="'.$class.'">';
+		foreach($table as $title => $value) {
+			$content .= '<tr><td><strong>'.$title.': </strong></td><td>'.$value.'</td></tr>';
+		}
+		$content .= '</table>';
+	}
+	return $content;
+}
+
+function _crm_rma_legend() {
+	return array('Review Pending', 'Approved', 'Declined');
+}
+
+function _crm_rma_request($op, $order) {
+	if($op == 'customer') {
+		$legend = _crm_rma_legend();
+		$rows = array();
+		$header = array(
+			array('data' => t('RMA #')),
+			array('data' => t('Status')),
+			array('data' => t('Items'))
+  		);
+
+		$requests = db_query("SELECT r.request_id, r.order_id, r.status, r.rma_number, r.data FROM {crm_rma_requests} r WHERE r.order_id = %d", $order->order_id);
+		$disabled = array();
+		while($request = db_fetch_object($requests)) {
+			$list = array();
+			$data = unserialize($request->data);
+			foreach($data as $index => $selected) {
+				if(!$selected) {
+					$product = $order->products[$index];
+					$list[] = $product->title;
+					$disabled[] = $index;
+				}
+			}
+			$rows[] = array(
+      			'data' => array(
+					array('data' => $request->rma_number),
+					array('data' => $legend[$request->status]),
+					array('data' => theme('item_list', $list)),
+				),
+				'id' => 'request-'. $request->request_id
+    		);
+		}
+		
+		if(!empty($rows)) {
+			$output .= theme('table', $header, $rows, array('class' => 'uc-request-table'));	
+		}
+		return $output .= drupal_get_form('crm_rma_request_form', $order, $disabled);
+	}
+	
+	return '';
+}
+
+function crm_rma_request_form(&$form_state, $order, $disabled) {
+	drupal_add_css(drupal_get_path('module', 'crm_rma').'/css/crm_rma_form.css');
+	
+	$form = array();
+	$form['#order_id'] = $order->order_id;
+	$form['new_request'] = array(
+		'#type' => 'fieldset',
+		'#title' => t('File Request'),
+		'#collapsible' => TRUE,
+		'#collapsed' => TRUE
+	);
+	foreach($order->products as $index => $product) {
+		$form['new_request'][$index] = array(
+			'#title' => 'Return '.$product->title,
+			'#type' => 'radios',
+			'#default_value' => 1,
+			'#options' => array(t('Yes'), t('No')),
+			'#disabled' => in_array($index, $disabled)
+		);
+	}
+	$form['new_request']['return_reason'] = array(
+		'#type' => 'textarea',
+		'#description' => 'Reason for having to return the selected products.',
+		'#required' => TRUE,
+		'#title' => t('Reason')
+	);
+	$form['new_request']['submit'] = array(
+		'#type' => 'submit',
+		'#value' => t('File Return Request'),
+		'#id' => 'file-rma-request'
+	);
+	
+	return $form;
+}
+
+function crm_rma_request_form_validate($form, &$form_state) {
+	$length = strlen($form['new_request']['return_reason']['#value']);
+	if($length > 500) {
+		form_set_error('return_reason', 'Reason must be less that 500 characters. You have '.$length.' characters.');
+	}
+	
+	$error = TRUE;
+	foreach($form['new_request'] as $key => $element) {
+		if(is_numeric($key) && $element['#value'] == '0') {
+			$error = FALSE;
+		}
+	}
+	if($error) {
+		form_set_error('return_reason', 'You must select atleast one item to be returned.');
+	}
+}
+
+function crm_rma_request_form_submit($form, &$form_state) {
+	$response = array();
+	foreach($form['new_request'] as $key => $element) {
+		if(is_numeric($key)) {
+			$response[$key] = $element['#value'];
+		}
+	}
+	
+	$crm_rma_request = new stdClass;
+	$crm_rma_request->order_id = $form['#order_id'];
+	$crm_rma_request->status = 0;
+	$crm_rma_request->reason = $form['new_request']['return_reason']['#value'];
+	$crm_rma_request->rma_number = _crm_rma_unique_number($crm_rma_request->order_id);
+	$crm_rma_request->data = serialize($response);
+	drupal_write_record('crm_rma_requests', $crm_rma_request);
+	drupal_set_message('Your return request has been filed.');
+}
+
+function _crm_rma_unique_number($unique_feed) {
+	$final_str = '';
+	$unique_feed = (string)$unique_feed;
+	$i = 0;
+	$length = strlen($unique_feed);
+	while($i < $length) {
+		$c = substr($unique_feed, $i, 1);
+		$final_str .= $c.rand(0, 9);
+		$i++;
+	}
+	return $final_str;
+}
+
+function crm_rma_advanced_search_suffix() {
+	$legend = _crm_rma_legend();
+	$output = '<h2>Pending RMA Requests</h2>';
+	$rows = array();
+	$header = array(
+		array('data' => t('Actions')),
+		array('data' => t('Order ID'), 'field' => 'r.order_id', 'sort' => 'desc'),
+		array('data' => t('RMA #')),
+		array('data' => t('Status')),
+  	);
+	$sql = "SELECT r.order_id, r.rma_number, r.status FROM {crm_rma_requests} r WHERE r.status = 0";
+	$requests = db_query($sql);
+	while($request = db_fetch_object($requests)) {
+		$rows[] = array(
+      		'data' => array(
+				array('data' => uc_order_actions($request, TRUE), 'style' => 'white-space:nowrap;'),
+				array('data' => $request->order_id),
+				array('data' => $request->rma_number),
+				array('data' => $legend[$request->status]),
+			),
+			'id' => 'order-'. $request->order_id
+    	);
+	}
+	if(!empty($rows)) {
+		return $output .= theme('table', $header, $rows, array('class' => 'uc-orders-table'));
+	} else {
+		return '';	
+	}
+}

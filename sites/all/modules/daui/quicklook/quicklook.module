@@ -1,0 +1,88 @@
+<?php
+function quicklook_menu() {
+	$urls['quicknode/%'] = array(
+		'title' => 'Quick Node', 
+		'page callback' => 'quicklook_node',
+		'page arguments' => array(1),
+		'access arguments' => array('access content'), 
+		'type' => MENU_CALLBACK,
+	);
+
+	return $urls;
+}
+function quicklook_node($nid) {
+	print theme('quicklook_quicknode', node_load($nid));
+}
+
+function quicklook_field_formatter_info() {
+	$formats = array();
+	if(module_exists('imagecache')) {
+		$rules = array();
+    	if (function_exists('imagecache_presets')) {
+     		$presets = imagecache_presets();
+      		foreach ($presets as $preset_id => $preset_info) {
+        		$rules[$preset_id] = $preset_info['presetname'];
+      		}
+    	} else {
+      		$rules = _imagecache_get_presets();
+    	}
+	}
+	foreach ($rules as $ruleid => $view_rule) {
+		$formats['quicklook_imagefield_'. $view_rule] = array(
+        	'label' => 'Quick Look: '. $view_rule,
+        	'field types' => array('image', 'filefield')
+      	);
+	}
+
+	return $formats;
+}
+
+function quicklook_theme() {
+	$themes = array();
+	$themes['quicklook_quicknode'] = array(
+		'arguments' => array('node' => NULL),
+		'template' => 'quicknode',
+	);
+	foreach (imagecache_presets() as $src) {
+		$themes['quicklook_formatter_quicklook_imagefield_'.$src['presetname']] = array(
+			'arguments' => array('element' => NULL),
+			'function' => 'theme_quicklook_formatter_imagefield',
+		);
+	}
+	return $themes;
+}
+
+function theme_quicklook_formatter_imagefield($element) {
+	if (!module_exists("imagecache") || !module_exists("imagefield")) {
+		return;
+	}
+	drupal_add_js(drupal_get_path('module', 'quicklook').'/js/quicklook.js');
+	drupal_add_css(drupal_get_path('module', 'quicklook').'/css/quicklook.css');
+	
+	$field_name = $element['#field_name'];
+	$item = $element['#item'];
+	$formatter = $element['#formatter'];
+	$node = node_load($element['#item']['nid']);
+	$preset = str_replace('quicklook_imagefield_', '', $formatter);
+
+	return _quicklook_imagefield_imagecache($field_name, $item, $formatter, $node, $preset);
+}
+
+function _quicklook_imagefield_imagecache($field_name, $item, $formatter, $node, $preset) {
+	if(_quicklook_is_first($node->nid)) {
+		return l(theme('imagecache', $preset, $item['filepath'], $item['data']['alt'], $item['data']['title'],  array('class' => 'quicklook-img')), 'node/'.$node->nid, array('html' => TRUE))
+		.
+		'<div class="quicklook-btn-container">'.l('Quick Look', 'quicknode/'.$node->nid, array('attributes' => array('class' => 'quicklook-btn'))).'</div>';
+	}
+}
+
+function _quicklook_is_first($node_id) {
+	//See if a field from this node id has occured before
+	static $cached_node_id = 0;
+	if($cached_node_id != $node_id) {
+		$cached_node_id = $node_id;
+		return true;
+	}
+	
+	return false;
+}

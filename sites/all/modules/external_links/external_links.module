@@ -1,0 +1,22 @@
+<?php
+function external_links_init() {
+	drupal_add_js(drupal_get_path('module', 'external_links').'/js/external_links.js');
+}
+
+//Filter to convert all static .
+function external_links_filter($op, $delta = 0, $format = -1, $text = '', $cache_id = 0) {
+  switch ($op) {
+    case 'list':
+		return array(0 => t('External Links Filter'));
+
+    case 'description':
+		return t('Convert non-xhtml valid target links into a xhtml valid link, with rel="external"');
+
+    case "process":
+		$pattern = '/target\="(\w)*"/';
+		$text = preg_replace($pattern, 'rel="external"', $text);
+		return $text;
+	default:
+		return $text;
+  }
+}

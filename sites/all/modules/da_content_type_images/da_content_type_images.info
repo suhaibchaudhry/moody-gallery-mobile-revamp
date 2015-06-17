@@ -1,0 +1,4 @@
+name = Content Type Images
+description = Lets admin associate images to content types, which can later be retrieved programatically.
+package = D.A. Custom Modules
+core = 6.x

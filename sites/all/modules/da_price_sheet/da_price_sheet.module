@@ -1,0 +1,80 @@
+<?php
+function da_price_sheet_menu() {
+	$urls = array();
+	
+	$urls['admin/store/price-sheet'] = array(
+		'title' => 'Price Sheet', 
+		'description' => 'Edit product prices in bulk using a web-based spreadsheet.',
+		'page callback' => 'da_price_sheet_edit', 
+		'access arguments' => array('administer products'), 
+		'type' => MENU_NORMAL_ITEM,
+	);
+	
+	$urls['admin/store/price-sheet/edit-callback'] = array(
+		'title' => 'Price Sheet Edit Callback', 
+		'description' => 'Performs a database update.',
+		'page callback' => 'da_price_sheet_edit_callback', 
+		'access arguments' => array('administer products'), 
+		'type' => MENU_CALLBACK,
+	);
+	
+	$urls['admin/store/price-sheet/products'] = array(
+		'title' => 'Price Sheet Model Data Source', 
+		'description' => 'Provides json data for product rows.',
+		'page callback' => 'da_price_sheet_products_callback', 
+		'access arguments' => array('administer products'), 
+		'type' => MENU_CALLBACK,
+	);
+
+	return $urls;
+}
+
+function da_price_sheet_products_callback() {
+	print 'test';
+}
+
+function da_price_sheet_edit_callback() {
+	db_query("UPDATE {uc_products} up SET up.model = '%s', up.list_price = %f, up.cost = %f, up.sell_price = %f WHERE up.nid = %d", $_POST['model'], $_POST['list_price'], $_POST['cost'], $_POST['sell_price'], $_POST['nid']);
+	db_query("UPDATE {node} n SET n.title = '%s' WHERE n.nid = %d", $_POST['title'], $_POST['nid']);
+	db_query("UPDATE {node_revisions} n SET n.title = '%s' WHERE n.nid = %d", $_POST['title'], $_POST['nid']);
+}
+
+function da_price_sheet_edit() {
+	da_price_sheet_slickgrid_resources();
+	da_price_sheet_json_entities();
+	return '<div id="price-sheet-grid"></div>';	
+}
+
+function da_price_sheet_json_entities() {
+	$product_json = array();
+	$products = db_query("SELECT up.nid, n.title, up.model, up.list_price, up.cost, up.sell_price FROM {uc_products} up INNER JOIN {node} n ON n.vid = up.vid ORDER BY up.nid ASC");	
+	while($product = db_fetch_object($products)) {
+		$product_json[] = array('nid' => $product->nid, 'title' => $product->title, 'model' => $product->model, 'list_price' => $product->list_price, 'cost' => $product->cost, 'sell_price' => $product->sell_price);
+	}
+
+	drupal_add_js(array('price_sheet_products' => $product_json), 'setting');
+}
+
+function da_price_sheet_slickgrid_resources() {
+	//Change jquery version
+	if(function_exists('jquery_update_change_path')) {
+		jquery_update_change_path(drupal_get_path('module', 'da_price_sheet') .'/js/replace');
+	} else {
+		drupal_set_message('A hacked version of JQuery Update for DAUI is required for proper functionality.', 'error');	
+	}
+
+	drupal_add_css(drupal_get_path('module', 'da_price_sheet') . '/css/slick.grid.css');
+	drupal_add_css(drupal_get_path('module', 'da_price_sheet') . '/css/jquery-ui-1.8.16.custom.css');
+	drupal_add_css(drupal_get_path('module', 'da_price_sheet') . '/css/slick-default-theme.css');
+	drupal_add_css(drupal_get_path('module', 'da_price_sheet') . '/css/priceedit.css');
+	
+	drupal_add_js(drupal_get_path('module', 'da_price_sheet') . '/js/jquery-ui-1.8.16.custom.min.js');
+	drupal_add_js(drupal_get_path('module', 'da_price_sheet') . '/js/jquery.event.drag-2.0.min.js');
+	drupal_add_js(drupal_get_path('module', 'da_price_sheet') . '/js/slick.core.js');
+	drupal_add_js(drupal_get_path('module', 'da_price_sheet') . '/js/slick.formatters.js');
+	drupal_add_js(drupal_get_path('module', 'da_price_sheet') . '/js/slick.editors.js');
+	drupal_add_js(drupal_get_path('module', 'da_price_sheet') . '/js/slick.grid.js');
+	drupal_add_js(drupal_get_path('module', 'da_price_sheet') . '/js/slick.bootstrap.js');
+	
+	drupal_add_js(array('da_price_sheet' => array('image_path' => base_path().drupal_get_path('module', 'da_price_sheet').'/images')), 'setting');
+}

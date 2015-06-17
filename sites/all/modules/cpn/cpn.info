@@ -1,0 +1,11 @@
+name = Code per Node
+description = Manage custom CSS & Javascript per node.
+core = 6.x
+
+
+; Information added by drupal.org packaging script on 2011-08-24
+version = "6.x-1.2"
+core = "6.x"
+project = "cpn"
+datestamp = "1314199316"
+

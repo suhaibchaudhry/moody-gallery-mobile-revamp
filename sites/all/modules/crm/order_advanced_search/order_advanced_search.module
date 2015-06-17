@@ -1,0 +1,81 @@
+<?php
+function order_advanced_search_menu_alter(&$items) {
+	$items['admin/store/orders']['page callback'] = 'order_advanced_search_admin';
+}
+
+function order_advanced_search_admin($sql = NULL, $args = NULL, $search = FALSE) {
+	if(is_numeric($_SESSION['order_advanced_search_type']) && !empty($_SESSION['order_advance_search_keywords'])) {
+		$header = array(
+    		array('data' => t('Actions')),
+    		array('data' => t('Order ID'), 'field' => 'o.order_id', 'sort' => 'desc'),
+    		array('data' => t('Customer')),
+    		array('data' => t('Total'), 'align' => 'center', 'field' => 'o.order_total'),
+    		array('data' => t('Purchase date'), 'align' => 'center', 'field' => 'o.created'),
+    		array('data' => t('Status'), 'field' => 'os.title'),
+  		);
+		
+		$search_type = $_SESSION['order_advanced_search_type'];
+		$search_keywords = $_SESSION['order_advance_search_keywords'];
+		$fields = array(array('o.billing_first_name', 'LIKE', ''), array('o.billing_last_name', 'LIKE', ''), array('o.billing_phone', 'LIKE', ''), array('o.billing_postal_code', 'LIKE', ''), array('o.billing_company', 'LIKE', ''), array('o.delivery_first_name', 'LIKE', ''), array('o.delivery_last_name', 'LIKE', ''), array('o.delivery_phone', 'LIKE', ''), array('o.delivery_postal_code', 'LIKE', ''), array('o.delivery_company', 'LIKE', ''), array('o.primary_email', '=', ''), array('p.model', '=', 'INNER JOIN {uc_order_products} p on o.order_id = p.order_id'), array('p.tracking_number', 'LIKE', 'LEFT JOIN {uc_packages} p on o.order_id = p.order_id'));
+
+		if(module_exists('crm_rma')) {
+			//refactor this into a hook mechanism later
+			$fields[] = array('r.rma_number', '=', 'INNER JOIN {crm_rma_requests} r ON o.order_id = r.order_id');
+		}
+
+	  	$sql = "SELECT o.order_id, o.uid, o.billing_first_name, o.billing_last_name, o.order_total, o.order_status, o.created, os.title FROM {uc_orders} o LEFT JOIN {uc_order_statuses} os ON o.order_status = os.order_status_id ".$fields[$search_type][2]." WHERE ".$fields[$search_type][0]." ".$fields[$search_type][1]." '"._order_advanced_search_match($search_keywords, $fields[$search_type][1])."' ".tablesort_sql($header);
+	}
+	
+	$content = '';
+	drupal_add_css(drupal_get_path('module', 'order_advanced_search').'/css/order_advanced_search-form_items.css');
+	$plugins = module_invoke_all('advanced_search_prefix');
+	foreach($plugins as $plugin) {
+		$content .= $plugin;
+	}
+	
+	$content .= '<h2>Order Search:</h2>';
+	$content .= uc_order_admin($sql, $args, $search);
+	
+	$plugins = module_invoke_all('advanced_search_suffix');
+	foreach($plugins as $plugin) {
+		$content .= $plugin;
+	}
+	return $content;
+}
+
+function _order_advanced_search_match($keywords, $operator) {
+	if(strtolower($operator) == "like") {
+		return '%'.$keywords.'%';
+	} else {
+		return $keywords;	
+	}
+}
+
+function order_advanced_search_form_alter(&$form, &$form_state, $form_id) {
+	if($form_id == 'uc_order_select_form') {
+		$form['search_type'] = array(
+			'#type' => 'select',
+			'#title' => t('Search For'),
+			'#default_value' => $_SESSION['order_advanced_search_type'],
+			'#options' => array('Billing First Name', 'Billing Last Name', 'Billing Tel', 'Billing Zip', 'Billing Company Name', 'Shipping First Name', 'Shipping Last Name', 'Shipping Tel', 'Shipping Zip', 'Shipping Company Name', 'Email', 'Part #', 'Tracking #')
+		);
+		if(module_exists('crm_rma')) {
+			$form['search_type']['#options'][] = 'RMA #';
+		}
+		$form['search_for'] = array(
+			'#type' => 'textfield',
+			'#title' => t('Keyword'),
+			'#size' => 20,
+     		'#maxlength' => 60,
+			'#default_value' => $_SESSION['order_advance_search_keywords']
+		);
+		$form['submit']['#weight'] = 1;
+		$form['submit']['#attributes'] = array('style' => 'position: absolute; top: -50px;');
+		$form['#submit'][] = '_order_advanced_search_submit';
+	}
+}
+
+function _order_advanced_search_submit(&$form, &$form_state) {
+	$_SESSION['order_advanced_search_type'] = trim($form['search_type']['#value']);
+	$_SESSION['order_advance_search_keywords'] = trim($form['search_for']['#value']);
+}

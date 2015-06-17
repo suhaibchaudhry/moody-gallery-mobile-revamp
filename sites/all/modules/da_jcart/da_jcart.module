@@ -1,0 +1,162 @@
+<?php
+function da_jcart_menu() {
+	$urls = array();
+	
+	$urls['jcart'] = array (
+		"title" => 'JCart Webservice', 
+    	"description" => 'Providex a xhtml webservice to carts on cached pages.',
+		"page callback" => '_da_jcart_ajax',
+		"access arguments" => array("access content"),
+		"type" => MENU_CALLBACK
+	);
+	
+	return $urls;
+}
+
+function _da_jcart_ajax() {
+	$items = uc_cart_get_contents();
+	print theme('jcart_render', $items);
+}
+
+function da_jcart_theme($existing, $type, $theme, $path) {
+	return array(
+    'jcart_render' => array(
+      	'arguments' => array('items' => NULL),
+		'function' => 'theme_jcart_display'
+		),
+	'jcart_item' => array(
+		'arguments' => array('product_elements' => NULL, 'odd_flag' => NULL),
+		'function' => 'theme_jcart_item_render'
+		)
+     );
+}
+
+function da_jcart_block($op = 'list', $delta = 0, $edit = array()) {
+	switch($op) {
+		case 'list':
+			$blocks = array();
+			
+			$blocks[0] = array(
+				'info' => t('DA JCart'),
+        		'cache' => BLOCK_NO_CACHE,
+			);
+			
+			return $blocks;
+		case 'view':
+			drupal_add_css(drupal_get_path('module', 'da_jcart').'/css/jcart.css', 'module');
+			
+			//To anon users from seeing "ghost" product, or cached carts from other users.
+			if(user_is_logged_in() || !$GLOBALS['conf']['cache']) {
+				drupal_add_js(drupal_get_path('module', 'da_jcart').'/js/jcart.js', 'module');
+				$items = uc_cart_get_contents();
+				$content = theme('jcart_render', $items);
+			} else {
+				//This js is wg theme specific at the moment, fix later to make theme independent.
+				drupal_add_js(drupal_get_path('module', 'da_jcart').'/js/jcart-ajax.js', 'module');
+				$content = '';
+			}
+			
+			return array(
+				'subject' => '<none>',
+				'content' => $content,
+			);
+	}
+}
+
+function theme_jcart_display($items) {
+	$items_markup = '';
+	$item_count = 0;
+	$total = 0;
+	$i = 1;
+
+	foreach($items as $item) {
+		$display_item = module_invoke($item->module, 'cart_display', $item);
+		
+		if (!empty($display_item)) {
+			$node = node_load($display_item['nid']['#value']);
+			$main_image = $node->field_image_cache[0];
+			
+			$product_elements = array(
+				'nid' => $display_item['nid']['#value'],
+				'image' => $main_image,
+				'qty' => t('&times;@qty', array('@qty' => $display_item['qty']['#default_value'])),
+				'title' => $display_item['title']['#value'],
+				'price' => $display_item['#total'],
+				'desc' => isset($display_item['description']['#value']) ? $display_item['description']['#value'] : FALSE,
+			);
+		}
+		
+		$item_count += $item->qty;
+		$total += $display_item['#total'];
+
+		$items_markup .= theme('jcart_item', $product_elements, ((bool)($i%2)));
+		$i++;
+	}
+	$themed_total = uc_price($total, array('revision' => 'themed', 'type' => 'price'));
+
+	$content = '<div id="cart-bar" class="clickitey">';
+	$content .= '<div class="lcurve"></div>';
+	$content .= '<div class="barcenter"><p>View Cart</p></div>';
+	$content .= '<div class="jcrtarrow"></div>';
+	$content .= '<div class="rcurve"></div>';
+	$content .= '</div>';
+	
+	$content .= '<div id="cart-table">';
+	$content .= '<div id="tppane"><div class="smallchtkbtn">'.l('Checkout', 'cart').'</div><p class="clickitey"><strong>Items:</strong> '.$item_count.' <span><strong>Total:</strong> '.$themed_total.'</span></p></div>';
+	$content .= '<div id="mdpane">';
+	
+	if($item_count > 0) {
+		$content .= '<p>There are '.$item_count.' items in your shopping cart.</p>';
+		$content .= '<table class="jitems">';
+		$content .= '<tbody>';
+		$content .= '<tr>';
+		$content .= '<th></th>';
+		$content .= '<th></th>';
+		$content .= '<th>Qty.</th>';
+		$content .= '<th>Total</th>';
+		$content .= '</tr>';
+		$content .= $items_markup;
+		$content .= '<tr class="jitem">';
+		$content .= '<td></td>';
+		$content .= '<td></td>';
+		$content .= '<td></td>';
+		$content .= '<td class="jtotal"><strong>'.$themed_total.'</strong></td>';
+		$content .= '</tr>';
+		$content .= '</tbody>';
+		$content .= '</table>';
+	} else {
+		$content .= '<p>There are no products in your shopping cart.</p>';	
+	}
+	$content .= '<div class="jcart-checkoutbtns">';
+	$content .= '<div class="jcart-lftbtn">';
+	$content .= l('Update Cart', 'cart');
+	$content .= '</div>';
+	$content .= '<div class="jcart-rghtbtn">';
+	$content .= l('<img src="'.base_path().drupal_get_path('module', 'da_jcart').'/images/checkout_now.gif" alt="Checkout Now" />', 'cart/checkout', array('html' => TRUE));
+	$content .= '</div>';
+	$content .= '<br style="clear: both; height: 0;" />';
+	$content .= '</div>';
+	$content .= '</div>';
+	$content .= '<div id="btpane"></div>';
+	$content .= '</div>';
+
+	return $content;
+}
+
+function theme_jcart_item_render($product_elements, $odd_flag) {
+	$context = array(
+		'revision' => 'themed',
+		'type' => 'price',
+	);
+	
+	$color_class = $odd_flag ? 'jodd' : 'jeven';
+	
+	$content = '<tr class="jitem '.$color_class.'">';
+	$content .= '<td>'.l(theme('imagecache', 'uc_thumbnail', $product_elements['image']['filepath'], 'Product Image', 'Buy '.$product_elements['title']), 'node/'.$product_elements['nid'], array('html' => true)).'</td>';
+	$content .= '<td>'.$product_elements['title'].'</td>';
+	$content .= '<td>'.$product_elements['qty'].'</td>';
+	$content .= '<td>'.uc_price($product_elements['price'], $context).'</td>';
+	//$content .= ($product_elements['desc'] === FALSE) ? '' : $content .= '<div class="jcart-price">'..'</div>'; ;
+	$content .= '</tr>';
+	return $content;
+}

@@ -1,0 +1,425 @@
+<?php
+function aaxsys_api_server_query($query, $parse = TRUE) {
+	$config = array("Source" => "AAXSYS", "Vendor" => variable_get('aaxsys_api_vendor', ''), "Type" => "XML");
+	$query = urldecode(http_build_query(array_merge($config, $query), '', '&'));
+	$response = drupal_http_request('http://www.aaxsys.com/cgi-bin/availres', array("Content-Type" => "application/x-www-form-urlencoded"), 'POST', $query);
+	//drupal_set_message('<strong>(Please ignore) Debugging Information: </strong>'.$query);
+	if($parse && strpos($response->data, '<?xml version="1.0" encoding="ISO-8859-1"?> <Error>') === FALSE) {
+		return simplexml_load_string($response->data);
+	} else {
+		return $response;	
+	}
+}
+
+function aaxsys_api_block($op = 'list', $delta = 0, $edit = array()) {
+	if($op == 'list') {
+		$blocks[0] = array(
+			'info' => t('AAXSYS Reservation Search'),
+			'cache' => BLOCK_CACHE_GLOBAL,
+		);
+		$blocks[1] = array(
+			'info' => t('City Results'),
+			'cache' => BLOCK_NO_CACHE,
+		);
+		return $blocks;
+	} else if($op == 'view') {
+		if($delta == 0) {
+			return array('subject' => 'AAXSYS Reservation Search', 'content' => drupal_get_form('aaxsys_api_search_form'));
+		} else {
+			return array('subject' => '', 'content' => aaxsys_api_city_query());	
+		}
+	}
+}
+
+function aaxsys_api_city_query() {
+	$node = menu_get_object();
+	if(!empty($node->field_aaxsys_city[0]['safe'])) {
+		$query = array();
+		$query['City'] = $node->field_aaxsys_city[0]['safe'];
+		$query['BEDROOMS'] = '';
+		$query['RESULTS'] = 'ALL';
+		$query['Furnished'] = 'BOTH';
+		$query['BeginDay'] = date('d', time()+315569260);
+		$query['BeginMonth'] = date('m', time()+315569260);
+		$query['BeginYear'] = date('Y', time()+315569260);
+		$query['EndDay'] = date('d', time()+315569260+86400);
+		$query['EndMonth'] = date('m', time()+315569260+86400);
+		$query['EndYear'] = date('Y', time()+315569260+86400);
+		$query['Zip'] = '';
+
+		$response = aaxsys_api_server_query($query);	
+	
+		if(isset($response->AvailableUnits->Unit) && count($response->AvailableUnits->Unit) > 0) {
+			return '<h2>Available Picks</h2>'.theme('render_units', $response->AvailableUnits->Unit);
+		} else {
+			return '';
+		}
+	}
+	//dpm($object);
+}
+
+function aaxsys_api_search_form($form_state) {
+	drupal_add_js(drupal_get_path('module', 'aaxsys_api').'/js/date_library.js');
+	drupal_add_js(drupal_get_path('module', 'aaxsys_api').'/js/popup_calendar_adjust.js');
+	$form = array();
+
+	$format = "m/d/Y";
+	$form['city'] = array(
+		'#prefix' => '<h2 class="property-search-form-head">Property Search</h2>',
+		'#type' => 'textfield',
+		'#title' => t('City'),
+		'#size' => 21,
+		'#maxlength' => 128
+	);
+	
+	$form['zip'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Zip code'),
+		'#size' => 10,
+		'#maxlength' => 128
+	);
+
+	$form['date_begin'] = array(
+		'#type' => 'date_popup',
+		'#title' => 'Reservation begins',
+		'#date_format' => $format,
+		'#date_year_range' => '-3:+3',
+		'#required' => TRUE,
+		'#attributes' => array('class' => 'aaxsys_api_date_begin_picker')
+	);
+	
+	$form['date_end'] = array(
+		'#type' => 'date_popup',
+		'#title' => 'Reservation ends',
+		'#date_format' => $format,
+		'#date_year_range' => '-3:+3',
+		'#required' => TRUE,
+		'#attributes' => array('class' => 'aaxsys_api_date_end_picker')
+	);
+	
+	$form['bedrooms'] = array(
+		'#type' => 'select',
+		'#title' => t('Bedrooms'),
+		'#options' => array_merge(array('' => 'Any'), range(0, 5)),
+		'#prefix' => '<div class="reservation_unit_type">',
+		'#suffix' => '</div>',
+	);
+
+	$form['furnished'] = array(
+		'#type' => 'radios',
+		'#title' => t('Unit Type'),
+		'#default_value' => 'FURNISHED',
+		'#options' => array(
+			'FURNISHED' => 'Furnished',
+			'UNFURNISHED' => 'Unfurnished',
+			'BOTH' => 'Both'
+		)
+	);
+	
+	$form['submit'] = array('#type' => 'submit', '#value' => t('Search'));
+
+	return $form;
+}
+
+function aaxsys_api_search_form_submit($form, &$form_state) {
+	$form_state['values']['date_begin'] = aaxsys_api_sanitize_date($form_state['values']['date_begin']);
+	$form_state['values']['date_end'] = aaxsys_api_sanitize_date($form_state['values']['date_end']);
+
+	drupal_goto('rsearch', urldecode(http_build_query($form_state['values'], '', '&')));
+}
+
+function aaxsys_api_sanitize_date($date) {
+	$parts = split(" ", $date);
+	return $parts[0];
+}
+
+function aaxsys_api_menu() {
+	$urls = array();
+	$urls['admin/settings/aaxsys_api'] = array(
+		'title' => t('AAXSYS API'),
+		'description' => t('Configure AAXSYS reservation system\'s API.'),
+		'page callback' => 'drupal_get_form',
+		'page arguments' => array('aaxsys_api_admin'),
+		'access arguments' => array('access administration pages'),
+		'type' => MENU_NORMAL_ITEM,
+	);
+	
+	$urls['rsearch'] = array(
+		'title' => t('Reservation Search'),
+		'description' => 'Display results to reservation search queries.',
+		'page callback' => 'aaxsys_api_reservation',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK
+	);
+	
+	$urls['property-details'] = array(
+		'title' => t('Unit Details'),
+		'description' => 'Webservice handler for fetching property details using a posted InformationLink.',
+		'page callback' => 'aaxsys_api_unit_details',
+		'access arguments' => array('access content'),
+		'type' => MENU_CALLBACK
+	);
+
+	return $urls;
+}
+
+/*
+function aaxsys_api_init() {
+	$config = array("Source" => "AAXSYS", "Vendor" => variable_get('aaxsys_api_vendor', ''), "Type" => "XML");
+	$settings = array("City" => "*", "BEDROOMS" => "", "RESULTS" => "ALL", "Furnished" => "FURNISHED", "BeginDay" => "16", "BeginMonth" => "5", "BeginYear" => "2012", "EndDay" => "16", "EndMonth" => "5", "EndYear" => "2012", "Zip" => "");
+	$query = urldecode(http_build_query(array_merge($config, $settings), '', '&'));
+	$request = drupal_http_request('http://www.aaxsys.com/cgi-bin/availres', array("Content-Type" => "application/x-www-form-urlencoded"), 'POST', $query);
+	
+	dpm($query);
+	dpm($request);
+}
+*/
+
+function aaxsys_api_reservation() {	
+	$date_begin = split('-', $_GET['date_begin']);
+	$date_end = split('-', $_GET['date_end']);
+	
+	$query = array();
+	
+	$query['City'] = empty($_GET['city']) ? '*' : $_GET['city'];
+	$query['BEDROOMS'] = ($_GET['bedrooms']);
+	$query['RESULTS'] = 'ALL';
+	$query['Furnished'] = $_GET['furnished'];
+	$query['BeginDay'] = $date_begin[2];
+	$query['BeginMonth'] = $date_begin[1];
+	$query['BeginYear'] = $date_begin[0];
+	$query['EndDay'] = $date_end[2];
+	$query['EndMonth'] = $date_end[1];
+	$query['EndYear'] = $date_end[0];
+	$query['Zip'] = $_GET['zip'];
+
+	$response = aaxsys_api_server_query($query);	
+	
+	if(isset($response->AvailableUnits->Unit) && count($response->AvailableUnits->Unit) > 0) {
+		return theme('render_units', $response->AvailableUnits->Unit);
+	} else {
+		return t('<p>Your inquiry did not produce any results. Please modify your search criteria and try again. For further assistance please call 1 (888) 721-2227.</p>');
+	}
+}
+
+function aaxsys_api_theme($existing, $type, $theme, $path) {
+	$actions = array();
+	return array(
+		'render_units' => array(
+			'arguments' => array('units' => NULL)
+		),
+		'render_unit' => array(
+			'arguments' => array('unit' => NULL, 'preset' => NULL, 'row_classes' => NULL),
+			'path' => drupal_get_path('module', 'aaxsys_api').'/templates',
+			'template' => 'aaxsys_result_row',
+		)
+	);
+}
+
+function theme_render_units($units) {
+	drupal_add_css(drupal_get_path('module', 'aaxsys_api').'/css/aaxsys_search.css');
+	drupal_add_css(drupal_get_path('module', 'jquery_ui').'/jquery.ui/themes/smoothness/jquery-ui-1.7.3.custom.css');
+	jquery_ui_add(array('ui.dialog', 'ui.slider', 'effects.drop'));
+	drupal_add_js(drupal_get_path('module', 'aaxsys_api').'/js/aaxsys_integration.js');
+	
+	$preset = variable_get('aaxsys_api_property_imgcache', 'property_thumb');
+	$content = '<div class="unit-results">';
+	$i = 0;
+	foreach($units as $unit) {
+		$row_classes = '';
+		if($i%2 == 0) {
+			$row_classes .= 'even';
+		} else {
+			$row_classes .= 'odd';
+		}
+		if($i == 0) {
+			$row_classes .= ' first';
+		} elseif($i == count($units)-1) {
+			$row_classes .= ' last';
+		}
+		
+		$content .= theme('render_unit', $unit, $preset, $row_classes);
+		$i++;
+		
+	}
+	$content .= '</div>';
+	$content .= '<div id="dialog"></div>';
+	return $content;
+}
+
+//Create a configuration form callback for setting up the API.
+function aaxsys_api_admin() {
+	$form = array();
+
+	$form['aaxsys_api_vendor'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Vendor Name'),
+		'#default_value' => variable_get('aaxsys_api_vendor', ''),
+		'#size' => 20,
+		'#description' => t("Your vendor name, used when connecting to the Aaxsys API"),
+		'#required' => TRUE,
+	);
+	
+	$form['aaxsys_api_property_imgcache'] = array(
+		'#type' => 'textfield',
+		'#title' => t('ImageCache Preset'),
+		'#default_value' => variable_get('aaxsys_api_property_imgcache', 'property_thumb'),
+		'#size' => 20,
+		'#description' => t("ImageCache preset used to resize property image thumbnails."),
+		'#required' => TRUE,
+	);
+
+	return system_settings_form($form);
+}
+
+function aaxsys_api_field_table($fields, $cols) {
+	$content = '<table class="property-addon-det"><tbody>';
+	$i = 0;
+	foreach($fields as $label => $value) {
+		if(!empty($value)) {
+			if($i%$cols == 0) {
+				$content .= '<tr>';
+			}
+			$content .= '<td>';
+			$content .= '<strong>'.$label.': </strong>'.$value;
+			$content .= '</td>';
+			if($i%$cols != 0) {
+				$content .= '</tr>';
+			}
+		}
+		$i++;
+	}
+	if($i%$cols != 0) {
+		$content .= '</tr>';
+	}
+	
+	$content .= '</tbody></table>';
+	return $content;
+}
+
+function aaxsys_api_unit_details() {
+	if(isset($_POST['InformationLink'])) {
+		$response = drupal_http_request('http://www.aaxsys.com'.$_POST['InformationLink']);
+		$content = aaxsys_api_clean_content(drupal_convert_to_utf8($response->data, 'ISO-8859-1'));
+		print $content;
+	} else {
+		print '<p>The information you requested is currently unavailable. Please try again later or call (888) 721-2227 for further assistance.</p>';
+	}
+	/*
+	$fp = fopen('/var/www/vhosts/eyewearshop.net/eyewearshop.net/phptmpdir/api_response'.time().'.html', 'w');
+	fwrite($fp, $content);
+	fclose($fp);
+	*/
+}
+
+function aaxsys_api_clean_content($content) {
+/*
+	$html_obj = new simple_html_dom();
+	$html_obj->load($content);
+	$html_obj->find('table', 0)->find('tr', 4)->outertext = '';
+	$html_obj->find('table', 0)->find('tr', 5)->outertext = '';
+	$html_obj->find('table', 0)->find('tr', 6)->outertext = '';
+	$html_obj->find('table', 0)->find('tr', 7)->outertext = '';
+	$html_obj->find('table', 0)->find('tr', 8)->outertext = '';
+	$html_obj->find('table', 0)->find('tr', 9)->outertext = '';
+	$html_obj->find('table', 0)->find('tr', 10)->outertext = '';
+	$html_obj->find('table', 0)->find('tr', 11)->outertext = '';
+	
+	$message = $html_obj->find('table', 0)->find('tr', 0);
+	$message->find('br', 0)->outertext = '';
+	$message->find('br', 1)->outertext = '';
+	$message->find('img', 0)->outertext = '';
+	$message->find('p', 0)->outertext = '';
+	$message->find('span', 0)->setAttribute('style', $message->find('span', 0)->getAttribute('style').'display: block;');
+	
+	if(strpos($content, 'Book this Unit online') !== FALSE) {
+		$html_obj->find('table', 0)->find('tr', 1)->outertext = '';
+	}
+	
+	$html_obj->find('table', 0)->find('[.AmsiNavLink2]')->outertext = '';
+	
+	$content = (string)$html_obj->find('body', 0);
+*/
+	module_load_include('inc', 'aaxsys_api', 'includes/phpQuery');
+	$start = 0;
+	
+	$dom = phpQuery::newDocumentHTML($content);
+	$dom['div > h2']->remove();
+	$dom['div > h3']->remove();
+	
+	if(strpos($content, 'Book this Unit online') !== FALSE) {
+		$dom['div > table:first > tr:eq(1)']->remove();	
+	}
+	$dom['div > table:first > tr:eq(2)']->remove();
+	$dom['div > table:first > tr:eq(2)']->remove();
+	$dom['div > table:first > tr:eq(2)']->remove();
+	$dom['div > table:first > tr:eq(4)']->remove();
+	$dom['div > table:first > tr:eq(4)']->remove();
+	$dom['div > table:eq(1)']->remove();
+	
+	$dom['div > table > tr:eq(1) table > tr:eq(1)']->remove();
+	$dom['div > table > tr:eq(2) table > tr:eq(1)']->remove();
+	
+	$span = $dom['span:eq(0)'];
+	
+	$dom['div > table > tr:eq(0) br']->remove();
+	$dom['div > table > tr:eq(0) img']->remove();
+	
+	$dom['a.AmsiNavLink2:eq(0)']->attr('rel', 'external')->attr('target', '_new');
+	aaxsys_api_externalize_link($dom['a.AmsiNavLink2:eq(1)']);
+	aaxsys_api_externalize_link($dom['a.AmsiNavLink2:eq(2)']);
+	aaxsys_api_externalize_link($dom['a.AmsiNavLink2:eq(3)']);
+	aaxsys_api_externalize_link($dom['a.AmsiNavLink2:eq(4)']);
+	aaxsys_api_externalize_link($dom['div > table > tr:eq(4) div.form a']);
+	//*[@id="dialog"]/div/table/tbody/tr[4]/td[5]/table/tbody/tr[20]/td/div/b/a
+	
+	if($dom['div > table > tr']->count() == 6) {
+		$loc = 5;	
+	} else {
+		$loc = 4;	
+	}
+
+	$preset = 'property_thumb_inner';
+	foreach($dom['div > table > tr:eq('.$loc.') > td:eq(0) > table > tr a'] as $link) {
+		$link = pq($link);
+		$thumbLocation = $link->find('img')->attr('src');
+		if(!empty($thumbLocation)) {
+			$link->attr('href', 'http://www.aaxsys.com/'.$link->attr('href'))->attr('rel', 'external')->attr('target', '_new');
+
+			$thumbLocation = 'http://www.aaxsys.com'.preg_replace('/\?.*/', '', $thumbLocation);
+			//imagecache_external_generate_path($link->find('img')->attr('src'), 'property_thumb');
+			$link->find('img')->attr('src', 'REPLACE_PATH'.imagecache_external_generate_path($thumbLocation, $preset));
+			//$link->attr('rel', );
+			//$link->find('img')->attr('src', imagecache_external_generate_path($link->find('img')->attr('src'), variable_get('aaxsys_api_property_imgcache', 'property_thumb')) );
+		}
+	}
+	
+	$span->attr('style', $span->attr('style').'display: block;');
+	
+	$dom['div > table:first > tr:eq(3)']->remove();
+	
+	return aaxsys_fix_images((string)$dom['body']);
+	/*
+	$matches = array();
+	preg_match_all('/<BODY>(.*?)<\/BODY>/s', $content, $matches);
+	return aaxsys_fix_images($matches[1][0]);
+	*/
+}
+
+function aaxsys_api_externalize_link($element) {
+	$element->attr('onclick', "external_integration_popup('http://www.aaxsys.com".$element->attr('href')."');return false;");
+	$element->attr('href', '#');
+	$element->attr('rel', 'external')->attr('target', '_new');
+}
+
+function aaxsys_fix_images($markup) {
+	return str_replace('http://www.aaxsys.comREPLACE_PATH/', base_path(), preg_replace('/<\s*img\s+src\s*=\s*"/', '<img src="http://www.aaxsys.com', aaxsys_remove_branding($markup)));
+}
+
+function aaxsys_remove_branding($markup) {
+	//$start = strpos($markup, '<table width = 640> <tr><td>');
+	//$end = strpos($markup, '</td></tr></table>', $start)+strlen('</td></tr></table>');
+	//$markup = str_replace(substr($markup, $start, $end-$start), '', $markup);
+	//$markup = str_replace('<td colspan="5" bgcolor="RoyalBlue">', '', $markup);
+	return str_replace('&amp;nbsp', ' ', $markup);
+}

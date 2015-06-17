@@ -1,0 +1,4 @@
+name = Product Fields
+description = Adds dummy JS based fields that cannot be accomplished via CCK, like the profit percentage field.
+package = D.A. Custom Modules
+core = 6.x

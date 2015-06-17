@@ -1,0 +1,5 @@
+name = Length Adjustments
+description = Allow adjustment information such as length, waist, etc to each size attribute option.
+package = D.A. Custom Modules
+core = 6.x
+dependencies[] = uc_attribute

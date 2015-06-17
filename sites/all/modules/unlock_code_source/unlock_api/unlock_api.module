@@ -1,0 +1,266 @@
+<?php
+module_load_include('inc', 'unlock_api', 'includes/xml_api');
+
+function unlock_api_isset_predicate() {
+	$username = variable_get('unlock_api_username', '');
+	$pass = variable_get('unlock_api_password', '');
+	$key = variable_get('unlock_api_key', '');
+	return !(empty($username) || empty($pass) || empty($key)) && unlock_api_check_login();
+}
+
+function unlock_api_init() {
+	//make sure the module is configured
+	if(!unlock_api_isset_predicate() && user_access("access administration pages")) {
+		drupal_set_message('Login Failed, Please '.l('configure', 'admin/settings/unlock_api').' the Unlock Code Source API Properly.', 'error');
+	}
+}
+
+function unlock_api_init_object() {
+	//Initialize the unlock_api object
+	$ucs = '';
+	$ucs = new UCS();
+	$ucs->username = variable_get('unlock_api_username', '');
+	$ucs->pass = variable_get('unlock_api_password', '');
+	$ucs->apikey = variable_get('unlock_api_key', '');
+
+	return $ucs;
+}
+
+function unlock_api_get_object() {
+	//Use staticly cached object to avoid initialization again and again on a single page load.
+	static $ucs;
+	if(isset($ucs)) {
+		return $ucs;
+	} else {
+		return $ucs = unlock_api_init_object();	
+	}
+}
+
+//Create a configuration form callback for setting up the API.
+function unlock_api_admin() {
+	$form = array();
+
+	$form['unlock_api_username'] = array(
+		'#type' => 'textfield',
+		'#title' => t('API Username'),
+		'#default_value' => variable_get('unlock_api_username', ''),
+		'#size' => 21,
+		'#description' => t("The user email to use while connecting to Unlockcodesource.com API"),
+		'#required' => TRUE,
+	);
+  
+	$form['unlock_api_password'] = array(
+		'#type' => 'textfield',
+		'#title' => t('API Password'),
+		'#default_value' => variable_get('unlock_api_password', ''),
+		'#size' => 21,
+		'#description' => t("The user password to use while connecting to Unlockcodesource.com API"),
+		'#required' => TRUE,
+	);
+	
+	$form['unlock_api_key'] = array(
+		'#type' => 'textfield',
+		'#title' => t('API Key'),
+		'#default_value' => variable_get('unlock_api_key', ''),
+		'#size' => 42,
+		'#description' => t("API Key generated at Unlockcodesource.com"),
+		'#required' => TRUE,
+	);
+	
+	$form['unlock_api_threshold'] = array(
+		'#type' => 'textfield',
+		'#title' => t('Credit Threshold'),
+		'#default_value' => variable_get('unlock_api_threshold', ''),
+		'#size' => 10,
+		'#description' => t("You will be notified via email if your credit is below this amount."),
+		'#required' => FALSE,
+	);
+
+	return system_settings_form($form);
+}
+
+function unlock_api_settings_page($settings_form) {
+	$content = '';
+	//Display Credit for the main admin account
+	if(unlock_api_isset_predicate()) {
+		$account = unlock_api_getaccountinfo();
+		
+		$content .= '<div class="unlock_api_credit">';
+		$content .=	'<h3>'.t('Your Account Infromation').'</h3>';
+		$content .= '<p><strong>Company Name: </strong> '.$account['company_name'].'</p>';
+		$content .= '<p><strong>Credits: </strong> '.$account['credits'].'</p>';
+		$content .= '</div>';
+	}
+	return $content.drupal_get_form($settings_form);
+}
+
+function unlock_api_menu() {
+	$urls = array();
+	$urls['admin/settings/unlock_api'] = array(
+		'title' => t('Unlock Code Source API'),
+		'description' => t('Configure Unlockcodesource.com settings.'),
+		'page callback' => 'unlock_api_settings_page',
+		'page arguments' => array('unlock_api_admin'),
+		'access arguments' => array('access administration pages'),
+		'type' => MENU_NORMAL_ITEM,
+	);
+
+	return $urls;
+}
+
+//Begin API Functions, will not work if api configuration is not set
+function unlock_api_check_login() {
+	$response = unlock_api_getaccountinfo();
+	return !isset($response['message']);
+}
+
+function unlock_api_getaccountinfo() {
+	/*
+	@Params: none
+	@Return: Returns the company name and available balance on the master API account.
+	*/
+
+	$ucs = unlock_api_get_object();
+	$ucs->action('get_accountinfo');
+	return $ucs->response['data']['response'];
+}
+
+function unlock_api_get_unlocktools($method_id = '') {
+	/*
+	@Params: method_id (optional), if provided than only that tool is returned
+	@Return: Returns the list of unlock tools available via remote API.
+	*/
+	$ucs = unlock_api_get_object();
+	if($method_id) {
+		$ucs->action('get_unlocktools', array('method_id' => $method_id));
+	} else {
+		$ucs->action('get_unlocktools');
+	}
+
+	return $ucs->response['data']['response'];
+}
+
+function unlock_api_get_SortedMethodList() {
+	/*
+	@Params: none
+	@Return: This command will create a sorted list of available unlock tools by carrier and manufacturer. This can be used to create a drop down box for users to easily select a tool to use.
+	*/
+	
+	$ucs = unlock_api_get_object();
+	$ucs->action('get_SortedMethodList');
+
+	return $ucs->response['data']['response'];
+}
+
+function unlock_api_get_instructions($instruction_id = '') {
+	/*
+	@Params: instruction_id (optional), If set will only return the instructions for that particular ID.
+	@Return: Get list of available instructions for each make when parameter is not specified. If the parameter is specified the instructions for that make will be returned.
+	*/
+	$ucs = unlock_api_get_object();
+	if($instruction_id) {
+		$ucs->action('get_instructions', array('instruction_id' => $instruction_id));
+		if(isset($ucs->response['data']['response']['instructions'])) {
+			$ucs->response['data']['response']['instructions'] = filter_xss($ucs->response['data']['response']['instructions'], array('a', 'em', 'strong', 'cite', 'code', 'ul', 'ol', 'li', 'dl', 'dt', 'dd', 'br', 'p'));
+		}
+	} else {
+		$ucs->action('get_instructions');
+	}
+
+	return $ucs->response['data']['response'];
+}
+
+function unlock_api_submit_order($imei, $phonemake_id, $tool_id, $params = '', $notes = '', $model = '') {
+	/*
+	@Params: imei (required), imei number(s) of device. If multiple imeis are specified load them into an numerically indexed array.
+			 phonemake_id (required), ID of the phone make. You can get the supported device's IDs by using the unlock_api_get_unlocktools command.
+			 tool_id (required), ID of the unlock tool. You can get the list of IDs by using get_unlocktools.
+			 params (depends on unlock tool), Depending on the unlock tool, an extra parameter may be required.
+			 notes (optional), Any optional notes you may have.
+			 model (optional), Model of the phone.
+			 customer_id (optional), E-mail customer the result of an unlock.
+	@Operation: Submit an imei order via remote API. Only certain methods are supported! You can get the tool_id for an unlock tool by using the get_unlocktools call.
+	@Return: Return order_id
+	*/
+	
+	$order_array = array('imei' => $imei, 'phonemake_id' => $phonemake_id);
+	
+	if($model) {
+		$order_array['model'] = $model;
+	}
+	
+	$order_array['tool_id'] = $tool_id;
+	
+	if($notes) {
+		$order_array['notes'] = $notes;
+	}
+	
+	if($params || $params == 0) {
+		$order_array['params'] = $params;
+	}
+	
+	$ucs = unlock_api_get_object();
+	$ucs->action('submit_order', $order_array);
+	return $ucs->response['data']['response'];
+}
+
+function unlock_api_get_imei($imei) {
+	/*
+	@Params: imei (required), imei number of device.
+	@Return: Get the order status of a submitted IMEI.
+	*/
+
+	$ucs = unlock_api_get_object();
+	$ucs->action('get_imei', array('imei' => $imei));
+
+	return $ucs->response['data']['response'];
+}
+
+function unlock_api_get_order_id($order_id) {
+	/*
+	@Params: order_id (required), order id of a previous order.
+	@Return: get the order status of an imei by the order ID.
+	*/
+
+	$ucs = unlock_api_get_object();
+	$ucs->action('get_orderID', array('orderID' => $order_id));
+
+	return $ucs->response['data']['response'];
+}
+
+function unlock_api_get_orderhistory() {
+	/*
+	@Params: none
+	@Return: returns the last 500 completed orders you placed.
+	*/
+
+	$ucs = unlock_api_get_object();
+	$ucs->action('get_orderhistory');
+
+	return $ucs->response['data']['response'];
+}
+
+function unlock_api_get_pendingorders() {
+	/*
+	@Params: none
+	@Return: returns the last 500 completed orders you placed.
+	*/
+
+	$ucs = unlock_api_get_object();
+	$ucs->action('get_pendingorders');
+
+	return $ucs->response['data']['response'];
+}
+
+function unlock_api_get_required_params($tool_id) {
+	/*
+	@Params: tool_id (required), The tool id of the unlock tool that needs extra parameters sent.
+	@Return: If an unlock tool requires extra parameters (<ExtraParams>Y</ExtraParams>) then you must use this tool get the extra parameter list to be used with the submit_order command.
+	*/
+	
+	$ucs = unlock_api_get_object();
+	$ucs->action('get_RequiredParams', array('tool_id' => $tool_id));
+
+	return $ucs->response['data']['response'];
+}
+//End API Functions

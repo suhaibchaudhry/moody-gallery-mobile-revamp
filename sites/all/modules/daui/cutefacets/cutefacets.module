@@ -1,0 +1,380 @@
+<?php
+function cutefacets_init() {
+	if(arg(0) == 'taxonomy' && arg(1) == 'term') {
+		$tid = arg(2);
+		$_GET['tid'][] = $tid;
+		//dpm($_GET);
+	}
+}
+
+/*Filter Block*/
+function cutefacets_block($op = 'list', $delta = 0, $edit = array()) {
+	if ($op == 'list') {
+		$blocks[0] = array(
+      		'info' => t('Cute Facets Views Filter Block'), 
+      		'cache' => BLOCK_CACHE_PER_PAGE
+		);
+		
+		$blocks[1] = array(
+			'info' => t('Cute Facets Quick View Block'),
+			'cache' => BLOCK_CACHE_GLOBAL
+		);
+		
+		$blocks[2] = array(
+			'info' => t('Cute Facets Views Filter Block 2'),
+			'cache' => BLOCK_CACHE_PER_PAGE
+		);
+
+		return $blocks;
+	} else if($op == 'configure') {
+		if($delta == 1) {
+			$form['cutefacets_settings'] = array(
+				'#type' => 'fieldset',
+				'#title' => t('Cute Facets Settings')
+			);
+			
+			$form['cutefacets_settings']['cutefacets_view_id'] = array(
+				'#type' => 'textfield',
+				'#title' => t('Views View ID'),
+				'#size' => 10,
+				'#required' => true,
+				'#description' => 'The numeric view ID of the views page that contains the exposed filters.',
+				'#default_value' => variable_get('cutefacets_view_id', '')
+			);
+
+			$form['cutefacets_settings']['cutefacets_view_display'] = array(
+				'#type' => 'textfield',
+				'#title' => t('Views Display ID'),
+				'#required' => true,
+				'#size' => 20,
+				'#description' => 'The display ID of the views page that contains the exposed filters.',
+				'#default_value' => variable_get('cutefacets_view_display', '')
+			);
+
+			return $form;
+		}
+	} else if($op == 'save') {
+		if($delta == 1) {
+			variable_set('cutefacets_view_id', $edit['cutefacets_view_id']);
+			variable_set('cutefacets_view_display', $edit['cutefacets_view_display']);
+		}
+	} else if($op == 'view') {
+		if($delta == 0 || $delta == 2) {
+			$block = array(
+				'subject' => t('Narrow Your Results'),
+				'content' => _cutefacets_block_render()
+			);
+		} else if($delta == 1) {
+			$block = array(
+				'subject' => t('Choose Filters'),
+				'content' => _cutefacets_find_block() 
+			);
+		}
+
+		return $block;
+	}
+}
+
+function _cutefacets_find_block() {
+	$display_options = _cutefacets_display_options();
+
+	drupal_add_css(drupal_get_path('module', 'cutefacets').'/css/cutefacets_block_0.css');
+	drupal_add_css(drupal_get_path('module', 'cutefacets').'/css/cutefacets_block_1.css');
+	drupal_add_js(drupal_get_path('module', 'cutefacets').'/js/cutefacets_block_1.js');
+	
+	drupal_add_css(drupal_get_path('module', 'cutefacets').'/css/msdropdown/dd.css');
+	drupal_add_css(drupal_get_path('module', 'cutefacets').'/css/msdropdown/skin2.css');
+	drupal_add_js(drupal_get_path('module', 'cutefacets').'/js/jquery.dd.min.js');
+	drupal_add_js(drupal_get_path('module', 'cutefacets').'/js/jquery.dd.trigger.js');
+	
+	drupal_add_js(array('cutefacets_settings' => array('views_path' => $display_options['path'])), 'setting');
+	drupal_add_js(array('cutefacets_price_settings' => array('max_price' => db_result(db_query("SELECT MAX(sell_price) FROM uc_products")))), 'setting');
+	
+	$content = '';
+	
+
+	foreach(variable_get('cutefacets_primary_vocabs', array()) as $vid => $vocab) {
+		$multiple = _cutefacets_vocabulary_multiple($vid);
+		$filter = _cutefacets_filter_for_vid($vid, $display_options);
+		$content .= '<div id="cutefacets-vocabulary-'.$vid.'" class="cutefacets-vocabulary" data-multiple="'.$multiple.'" data-filter="'.$filter.'">';
+		$terms = taxonomy_get_tree($vid);
+		if($multiple) {
+			foreach($terms as $term) {
+				$content .= '<a class="facet-option vocabulary-option" href="#" rel="'.$term->tid.'"><span></span>'.check_plain($term->name).'</a>';
+			}
+		} else {
+			$content .= '<select>';
+			$content .= '<option value="0">All Providers</option>';
+			foreach($terms as $term) {
+				$content .= '<option value="'.$term->tid.'">'.check_plain($term->name).'</option>';
+			}
+			$content .= '</select>';
+		}
+		$content .= '</div>';
+	}
+	$content .= '<a class="browse-plans" href="#">Browse Plans</a>';
+	
+	//drupal_add_js(array('cutefacets_settings' => array('find_block_vocabs' => $primary_vocabs)), 'setting');
+
+	return $content;
+}
+
+function _cutefacets_vocabulary_multiple($vid) {
+	$vocab = db_fetch_object(db_query("SELECT multiple FROM {vocabulary} WHERE vid = %d", $vid));
+	return $vocab->multiple;
+}
+
+function _cutefacets_block_render() {
+	if(module_exists('da_js_updater')) {
+		drupal_add_css(drupal_get_path('module', 'cutefacets').'/css/smoothness/jquery-ui-1.9.1.custom.min.css');
+		drupal_add_js(drupal_get_path('module', 'cutefacets').'/js/jquery-ui-1.9.1.custom.min.js');
+		drupal_add_js(drupal_get_path('module', 'cutefacets').'/js/jquery.ui.touch-punch.min.js');
+	} else {
+		drupal_add_css(drupal_get_path('module', 'jquery_ui').'/jquery.ui/themes/smoothness/jquery-ui-1.7.3.custom.css');
+		jquery_ui_add('ui.slider');
+	}
+	
+	drupal_add_css(drupal_get_path('module', 'cutefacets').'/css/cutefacets_block_0.css');
+	drupal_add_js(drupal_get_path('module', 'cutefacets').'/js/cutefacets_block_0.js');
+	
+	_cutefacets_js_params();
+	
+	return '<div class="cutefacets-primary-facets"></div><div class="cutefacets-secondary-facets"></div>';
+}
+
+function _cutefacets_js_params() {
+	//Supply a list of primary vocabularies to begin to display facets for.
+	$primary_vocabs = array();
+	foreach(variable_get('cutefacets_primary_vocabs', array()) as $vid => $vocab) {
+		$primary_vocabs[] = $vid;
+	}
+	$map = _cutefacets_filter_map();
+	drupal_add_js(array('cutefacets_price_settings' => array('max_price' => db_result(db_query("SELECT MAX(sell_price) FROM uc_products")))), 'setting');
+	drupal_add_js(array('cutefacets_settings' => array('filter_map' => $map)), 'setting');
+	drupal_add_js(array('cutefacets_settings' => array('primary_vocabs' => $primary_vocabs)), 'setting');
+	drupal_add_js(array('cutefacets_settings' => array('display_widgets' => _cutefacets_get_display_widgets())), 'setting');
+	drupal_add_js(array('cutefacets_settings' => array('term_trees' => _cutefacets_get_child_tree())), 'setting');
+	drupal_add_js(array('cutefacets_settings' => array('label_sliders' => variable_get('cutefacets_labels', 0))), 'setting');
+	if(function_exists("taxonomy_image_get_url")) {
+		drupal_add_js(array('cutefacets_settings' => array('term_images' => _cutefacets_get_term_images())), 'setting');
+	}
+}
+
+function _cutefacets_get_term_images() {
+	static $mypath, $fullpath;
+	// Get base path for my images.
+  	if (!isset($mypath)) {
+    	$mypath = variable_get('taxonomy_image_path', 'category_pictures') . '/';
+    	$fullpath = base_path() . file_directory_path() . '/' . $mypath;
+  	}
+	
+	$term_images  = array();
+	$images = db_query("SELECT ti.tid, ti.path FROM {term_image} ti");
+	while($image = db_fetch_object($images)) {
+		$term_images[$image->tid] =  $fullpath . $image->path;
+	}
+	
+	return $term_images;
+}
+
+function _cutefacets_filter_for_vid($vid, $display_options) {
+	foreach($display_options['filters'] as $filter_label => $filter_details) {
+		if($filter_details['vid'] == $vid) {
+			return $filter_label;
+		}
+	}
+
+	return '';
+}
+
+function _cutefacets_display_options() {	
+	$view = db_fetch_object(db_query("SELECT display_options FROM {views_display} WHERE vid = %d AND id = '%s'", variable_get('cutefacets_view_id', ''), variable_get('cutefacets_view_display', '')));
+	return unserialize($view->display_options);
+}
+
+//Supply a map of vocabulary ids and filter identifiers
+function _cutefacets_filter_map() {
+	$view = views_get_page_view();
+	$filter_map = array();
+
+	if(isset($view) && isset($view->options['filters'])) {
+		foreach($view->options['filters'] as $filter) {
+			if($filter['exposed'] && $filter['table'] == 'term_node') {
+				$filter_map[] = array('filter' => $filter['expose']['identifier'], 'vid' => (int)$filter['vid'], 'operator' => $filter['operator'], 'single' => $filter['expose']['single']);
+			}
+		}
+	}
+	
+	return $filter_map;
+}
+
+//Get the display widget setting for each vid.
+function _cutefacets_get_display_widgets() {
+	$display_widgets = array();
+	$widgets = db_query("SELECT * FROM {cutefacets_vocab_widget}");
+	while($widget = db_fetch_object($widgets)) {
+		$display_widgets[] = array('vid' => (int)$widget->vid, 'wtype' => (int)$widget->wtype);
+	}
+
+	return $display_widgets;
+}
+
+//Child tree for terms to vids
+function _cutefacets_get_child_tree() {
+	$child_vocabs = array();
+	$terms = db_query("SELECT cv.tid, cv.vid, cv.pvid FROM {cutefacets_child_vocabs} cv INNER JOIN {vocabulary} v ON cv.vid = v.vid ORDER BY weight ASC");
+
+	while($term = db_fetch_object($terms)) {
+		$child_vocabs[] = array('tid' => (int)$term->tid, 'vid' => (int)$term->vid, 'pvid' => (int)$term->pvid);
+	}
+	
+	return $child_vocabs;
+}
+
+/*Management Permissions*/
+function cutefacets_perm() {
+  return array('manage cute facets');
+}
+
+/*Menu Page*/
+function cutefacets_menu() {
+  $items = array();
+
+  $items['admin/settings/cute-facets'] = array(
+    'title' => t('Cute Facets Configuration'),
+    'description' => t('Configure settings for cute facets.'),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('cutefacets_admin'),
+    'access arguments' => array('manage cute facets'),
+    'type' => MENU_NORMAL_ITEM,
+   );
+
+  return $items;
+}
+
+/*Main settings form*/
+function cutefacets_admin() {
+	$form = array();
+
+	$form['cutefacets_primary_vocabs']	= array(
+		'#type' => 'select',
+		'#title' => t('Primary Taxonomy Vocabularies'),
+		'#description' => t('Select the main always enabled facet vocabularies whose terms will may provide additional conditional facet vocabularies.'),
+		'#multiple' => true,
+		'#default_value' => variable_get('cutefacets_primary_vocabs', array()),
+		'#options' => _cutefacets_vocab_options()
+	);
+	
+	$form['cutefacets_labels'] = array(
+		'#type' => 'select',
+		'#title' => t('Label Sliders'),
+		'#description' => t('Place lables under sliders'),
+		'#options' => array('No', 'Yes'),
+		'#default_value' => variable_get('cutefacets_labels', 0)
+	);
+
+	return system_settings_form($form);
+}
+
+/*Taxonomy Term Configurations*/
+function cutefacets_form_alter(&$form, &$form_state, $form_id) {
+	if($form_id == 'taxonomy_form_term' && in_array($form['vid']['#value'], variable_get('cutefacets_primary_vocabs', array())) && _cutefacets_display_setting($form['vid']['#value']) == '0') {
+		//Change button weights
+		$form['submit']['#weight'] = 2;
+		$form['delete']['#weight'] = 3;
+
+		$form['cute-facets-term'] = array(
+			'#type' => 'fieldset',
+			'#title' => t('Cute Facets'),
+			'#collapsible' => TRUE,
+			'#collapsed' => FALSE,
+			'#weight' => 1
+		);
+		
+		$form['cute-facets-term']['child-vocabs'] = array(
+			'#type' => 'select',
+			'#title' => t('Child Vocabularies'),
+			'#description' => t('Select a child cute facet vocabulary that will appear after a cute facet term is selected from this vocabulary. NOTE: Primary vocabularies are not listed here.'),
+			'#options' => _cutefacets_vocab_options(true),
+			'#multiple' => true,
+			'#default_value' => _cutefacets_term_children($form['tid']['#value'])
+		);
+	} else if($form_id == 'taxonomy_form_vocabulary') {
+		$form['submit']['#weight'] = 2;
+		$form['delete']['#weight'] = 3;
+
+		$form['cute-facets-term'] = array(
+			'#type' => 'fieldset',
+			'#title' => t('Cute Facets'),
+			'#collapsible' => TRUE,
+			'#collapsed' => FALSE,
+			'#weight' => 1
+		);
+		
+		$form['cute-facets-term']['display-setting'] = array(
+			'#type' => 'select',
+			'#title' => t('Cute Facets Display'),
+			'#options' => array('Item List', 'Slider'),
+			'#description' => 'The widget used to display items in the cute facets filter. Slider widget terms do not allow child vocabularies.',
+			'#default_value' => _cutefacets_display_setting($form['vid']['#value'])
+		);
+	}
+}
+
+function _cutefacets_display_setting($vid) {
+	return db_result(db_query("SELECT wtype FROM {cutefacets_vocab_widget} WHERE vid = %d", $vid));
+}
+
+function cutefacets_taxonomy($op, $type, $array = NULL) {
+	if($type == 'term') {
+		$tid = $array['tid'];
+		$pvid = $array['vid'];
+
+		if(($op == 'insert' || $op == 'update') && isset($array['child-vocabs'])) {
+			db_query("DELETE FROM {cutefacets_child_vocabs} WHERE tid = %d", $tid);
+
+			foreach($array['child-vocabs'] as $vid => $child_vocab) {
+				db_query("INSERT INTO {cutefacets_child_vocabs} VALUES (%d, %d, %d)", $tid, $vid, $pvid);
+			}
+		} elseif($op == 'delete') {
+			db_query("DELETE FROM {cutefacets_child_vocabs} WHERE tid = %d", $tid);
+		}
+	} elseif($type = "vocabulary") {
+		$vid = $array['vid'];
+
+		if(($op == 'insert' || $op == 'update') && isset($array['display-setting'])) {
+			$display_setting = $array['display-setting'];
+			db_query("DELETE FROM {cutefacets_vocab_widget} WHERE vid = %d", $vid);
+			db_query("INSERT INTO {cutefacets_vocab_widget} VALUES (%d, %d)", $vid, $display_setting);
+		} elseif($op == 'delete') {
+			db_query("DELETE FROM {cutefacets_vocab_widget} WHERE vid = %d", $vid);
+		}
+	}
+}
+
+function _cutefacets_vocab_options($disablePrimaryVocabs = false) {
+	$vocabularies = taxonomy_get_vocabularies();
+	$options = array();
+	
+	foreach($vocabularies as $vid => $vocabulary) {
+		$options[$vid] = $vocabulary->name;
+	}
+	
+	if($disablePrimaryVocabs) {
+		foreach(variable_get('cutefacets_primary_vocabs', array()) as $disabledVid => $disabled) {
+			unset($options[$disabledVid]);
+		}
+	}
+	
+	return $options;
+}
+
+function _cutefacets_term_children($tid) {
+	$children = db_query("SELECT vid FROM {cutefacets_child_vocabs} WHERE tid = %d", $tid);
+	$vids = array();
+	while($child = db_fetch_object($children)) {
+		$vids[$child->vid] = $child->vid;
+	}
+
+	return $vids;
+}

@@ -1,0 +1,4 @@
+name = Artist Last Name Sort
+description = Sort artists by last name.
+package = Moody Custom Modules
+core = 6.x

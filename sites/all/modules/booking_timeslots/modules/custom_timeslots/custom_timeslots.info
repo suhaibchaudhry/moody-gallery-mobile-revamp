@@ -1,0 +1,17 @@
+; $Id: custom_timeslots.info,v 1.1.2.3 2010/01/05 10:47:23 kenorb Exp $
+name = Custom Timeslots
+description = Provides schedule table with custom timeslots
+package = Date/Time
+core = 6.x
+dependencies[] = booking_timeslots
+dependencies[] = content_copy
+dependencies[] = cck_time
+dependencies[] = install_profile_api
+
+
+; Information added by drupal.org packaging script on 2010-02-11
+version = "6.x-1.2"
+core = "6.x"
+project = "booking_timeslots"
+datestamp = "1265928302"
+
