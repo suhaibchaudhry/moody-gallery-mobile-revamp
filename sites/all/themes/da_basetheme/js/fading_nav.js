@@ -1,4 +1,4 @@
-var run_flag = true;
+/*var run_flag = true;
 Drupal.behaviors.fading_nav = function(context) {
 	if(run_flag) {
 		//Elements
@@ -31,4 +31,4 @@ Drupal.behaviors.fading_nav = function(context) {
 		}
 		run_flag = false;
 	}
-}
+}*/
