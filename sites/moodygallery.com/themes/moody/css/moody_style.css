@@ -190,10 +190,15 @@ p.contactinfo {
 
 /*-- ------------testing----------- --*/
 
-@media only screen and (max-width: 480px) {
+@media only screen and (max-width: 980px) {
 
-	.container {
+.container {
   width: 100%;
+}
+
+.views-field-field-cover-image-fid img {
+	width: 100% !important;
+	height: auto !important;
 }
 
 body {
@@ -228,12 +233,17 @@ body {
   float: none;
 }
 
+.primary_nav ul li a {
+  margin: 0;
+}
+
 .primary_nav_js_overlay {
   position: relative;
   margin-top: -9%;
 }
 .content {
   float: none;
+  box-sizing: border-box;
 }
 
 .no-bars {
@@ -275,4 +285,10 @@ body {
 }
 
 
+}
+
+@media only screen and (max-width: 640px) {
+	.footer p {
+		width: auto;
+	}
 }
