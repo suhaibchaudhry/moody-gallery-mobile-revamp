@@ -34,9 +34,13 @@ p {
 	text-align:center;
 	color: #000;
 	border-color: #000;
+	-webkit-transition : all 750ms ease-out;
+  	-moz-transition : all 750ms ease-out;
+  	-o-transition : all 750ms ease-out;
+  	transition : all 750ms ease-out;
 }
 
-.primary_nav ul li a:hover {
+.primary_nav ul li a:hover, .primary_nav ul li.active a {
 	color: #b10700;
 	border-color: #b10700;
 }
