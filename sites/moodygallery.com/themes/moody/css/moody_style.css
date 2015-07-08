@@ -15,6 +15,19 @@ p {
 	color: #666;
 	font-size: 11px;
 }
+
+.primary_nav ul {
+	display: table;
+	width: 100%;
+	table-layout: fixed;
+}
+
+.primary_nav ul li {
+	display: table-cell;
+	text-align: center;
+	float: none;
+}
+
 .primary_nav ul li a {
 	font-family: 'AvenirLTStd', Verdana, Arial, Helvetica, sans-serif;
 	font-size: 13px;
@@ -235,9 +248,13 @@ body {
 
 .primary_nav ul {
   float: none;
+  display: block;
+  width: auto;
 }
+
 .primary_nav ul li {
   float: none;
+  display: block;
 }
 
 .primary_nav ul li a {
