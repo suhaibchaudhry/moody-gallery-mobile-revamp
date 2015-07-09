@@ -453,6 +453,14 @@ span.wysiwyg_imageupload img {
 	width: auto;
 }
 
+.googlemap {
+	float: none;
+}
+
+.googlemap iframe {
+	width: 100%;
+}
+
 }
 
 @media only screen and (max-width: 748px) {

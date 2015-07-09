@@ -28,13 +28,21 @@
  *
  * @ingroup views_templates
  */
+static $trial;
+if(isset($trial)) {
+	$trial++;
+} else {
+	$trial = 0;
+}
 ?>
+<?php if($trial == 0) : ?>
 <div class="exhibition-headings">
 	<div class="exhibition-date field-heading"><strong>Dates</strong></div>
     <div class="exhibition-artist field-heading"><strong>Featured Artist</strong></div>
     <div class="exhibition-title field-heading"><strong>Name</strong></div>
     <div class="exhibition-details field-heading"><strong>Details</strong></div>
 </div>
+<?php endif; ?>
 <div class="<?php print $classes; ?>">
   <?php if ($admin_links): ?>
     <div class="views-admin-links views-hide">
