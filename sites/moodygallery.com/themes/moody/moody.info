@@ -16,3 +16,4 @@ regions[footer] = Footer
 stylesheets[all][] = css/moody_style.css
 stylesheets[all][] = css/moody_blocks.css
 scripts[] = js/google_map.js
+scripts[] = js/mobile_menu.js
