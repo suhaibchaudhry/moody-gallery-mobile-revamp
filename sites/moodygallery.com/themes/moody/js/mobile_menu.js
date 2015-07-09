@@ -3,6 +3,7 @@ Drupal.behaviors.mobile_menu = function(context) {
 	$primar_nav.prepend('<a class="mobile-menu-trigger" href="#">Menu</a>');
 	$('a.mobile-menu-trigger', context).click(function(e) {
 		e.preventDefault();
+		e.stopPropagation();
 		$primar_nav.find('ul').toggleClass('menuExpanded');
 	});
 }
