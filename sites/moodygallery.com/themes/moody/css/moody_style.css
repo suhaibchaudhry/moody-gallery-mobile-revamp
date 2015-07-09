@@ -393,6 +393,13 @@ display: table;
   box-sizing: border-box;
 }
 
+.footer p.footer-message span {
+  display: block;
+  line-height: 0;
+  visibility: hidden;
+  text-indent: -9999px;
+}
+
 #block-block-5 {
     float: left;
     position: absolute;
