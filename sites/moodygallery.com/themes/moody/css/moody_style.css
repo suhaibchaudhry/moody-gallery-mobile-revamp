@@ -323,18 +323,14 @@ body {
 .article-title-crumb h1.title {
   float: none;
 }
-/*
-.exhibition-headings, .exhibition-headings .field-heading {
-  visibility: hidden;
-   margin: 0 0 -15px;
-}
-.exhibition-headings .field-heading {
-  margin: 0 0 -15px;
+
+.exhibition-headings, .exhibition-headings .field-heading, .exhibition-headings .field-heading {
+	display: none;
 }
 
 .view-exhibitions, .view-exhibitions .views-field-field-event-date-value, .view-exhibitions .views-field-body, .view-exhibitions .views-field-title, .view-exhibitions .views-field-field-featured-artist-nid, .view-exhibitions .views-field-field-cover-image-fidf {
-  float: none;
-  min-height: 45px;
+	min-height: 10px;
+	margin: 0 0 10px;
 }
 
 .view-exhibitions .views-row {
@@ -343,13 +339,7 @@ body {
   float: none;
   width: 100%;
   overflow: hidden;
-}*/
-
-.view-exhibitions, .view-exhibitions .views-field-field-event-date-value, .view-exhibitions .views-field-body, .view-exhibitions .views-field-title, .view-exhibitions .views-field-field-featured-artist-nid, .view-exhibitions .views-field-field-cover-image-fidf {
-	min-height: 10px;
-	margin: 0 0 10px;
 }
-
 
 .header_right {
 	clear: none;
@@ -463,6 +453,12 @@ span.wysiwyg_imageupload img {
 	width: auto;
 }
 
+}
+
+@media only screen and (max-width: 748px) {
+	.view-exhibitions .views-field-body {
+		clear: left;
+	}
 }
 
 @media only screen and (max-width: 640px) {
