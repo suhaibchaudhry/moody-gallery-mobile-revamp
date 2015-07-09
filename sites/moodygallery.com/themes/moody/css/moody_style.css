@@ -16,6 +16,10 @@ p {
 	font-size: 11px;
 }
 
+.primary_nav {
+	font-family: 'AvenirLTStd', Verdana, Arial, Helvetica, sans-serif;
+}
+
 .primary_nav ul {
 	display: table;
 	width: 100%;
@@ -29,7 +33,6 @@ p {
 }
 
 .primary_nav ul li a {
-	font-family: 'AvenirLTStd', Verdana, Arial, Helvetica, sans-serif;
 	font-size: 13px;
 	text-align:center;
 	color: #000;
