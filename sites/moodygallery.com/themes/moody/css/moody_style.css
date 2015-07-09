@@ -227,6 +227,10 @@ p.contactinfo {
   width: 100%;
 }
 
+.exhibition-headings {
+	width: auto;
+}
+
 .views-field-field-cover-image-fid img {
 	width: 100% !important;
 	height: auto !important;
@@ -319,6 +323,7 @@ body {
 .article-title-crumb h1.title {
   float: none;
 }
+/*
 .exhibition-headings, .exhibition-headings .field-heading {
   visibility: hidden;
    margin: 0 0 -15px;
@@ -338,7 +343,13 @@ body {
   float: none;
   width: 100%;
   overflow: hidden;
+}*/
+
+.view-exhibitions, .view-exhibitions .views-field-field-event-date-value, .view-exhibitions .views-field-body, .view-exhibitions .views-field-title, .view-exhibitions .views-field-field-featured-artist-nid, .view-exhibitions .views-field-field-cover-image-fidf {
+	min-height: 10px;
+	margin: 0 0 10px;
 }
+
 
 .header_right {
 	clear: none;
