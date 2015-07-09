@@ -264,7 +264,7 @@ body {
 
 .primary_nav {
   float: none;
-  margin: 61px 0 10px;
+  margin: 22px 0 10px;
 }
 
 .primary_nav ul {
@@ -311,7 +311,6 @@ body {
 .article-title-crumb {
   float: none;
   width: 100%;
-  margin-top: 49px;
 }
 .article-title-crumb .breadcrumb {
   float: none;
