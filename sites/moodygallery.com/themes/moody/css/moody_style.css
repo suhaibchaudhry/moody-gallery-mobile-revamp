@@ -388,6 +388,8 @@ display: table;
 	padding: 0 30px;
     	text-align: center;
     	/*border-top: 1px solid #ccc;*/
+	  width: 100%;
+  box-sizing: border-box;
 }
 
 #block-block-5 {
@@ -401,7 +403,7 @@ display: table;
 }
 
 @media only screen and (max-width: 640px) {
-	.footer p {
+	.footer p.footer-message {
 		width: auto;
 	}
 }
