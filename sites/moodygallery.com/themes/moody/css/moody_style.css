@@ -454,6 +454,15 @@ display: table;
 	background-position: 53px 0;
 }
 
+span.wysiwyg_imageupload img {
+	width: 100%;
+	height: auto;
+}
+
+.field-field-artist-work {
+	width: auto;
+}
+
 }
 
 @media only screen and (max-width: 640px) {
