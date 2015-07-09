@@ -460,9 +460,3 @@ span.wysiwyg_imageupload img {
 		clear: left;
 	}
 }
-
-@media only screen and (max-width: 640px) {
-	.footer p.footer-message {
-		width: auto;
-	}
-}
