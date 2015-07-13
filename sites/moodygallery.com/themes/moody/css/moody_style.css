@@ -219,6 +219,20 @@ p.contactinfo {
 	float : right;
 }
 
+.news-grid .views-row {
+	border-bottom: 1px solid #ccc;
+	padding: 10px 0;
+}
+
+.news-grid .views-row-last {
+	border: none;
+}
+
+.news-grid .views-label-field-news-artist-nid {
+	font-weight: bold;
+	line-height: 35px;
+}
+
 /*-- ------------testing----------- --*/
 
 @media only screen and (max-width: 980px) {
