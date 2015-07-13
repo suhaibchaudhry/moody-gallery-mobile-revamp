@@ -330,9 +330,9 @@ body {
   float: none;
   width: 100%;
 }
-.article-title-crumb .breadcrumb {
+/*.article-title-crumb .breadcrumb {
   float: none;
-}
+}*/
 
 .article-title-crumb h1.title {
   float: none;
