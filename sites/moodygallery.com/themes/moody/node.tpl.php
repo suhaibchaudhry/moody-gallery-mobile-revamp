@@ -7,6 +7,9 @@
   <div class="node-content clear-block">
     <?php print $content ?>
     <?php if($node->parent_nodes):?><div class="parent-nodes"><?php print phptemplate_parent_nodes($node->parent_nodes); ?></div><?php endif; ?>
+    <?php if($node->type == 'artist') : ?>
+    <div class="press-link"><a href="<?php print base_path() ?>news?field_news_artist_nid=<?php print $node->nid ?>">Press</a></div>
+    <?php endif; ?>
   </div>
 
   <div class="clear-block">

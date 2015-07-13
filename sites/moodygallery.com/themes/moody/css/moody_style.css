@@ -138,7 +138,7 @@ p.contactinfo {
 	clear: left;	
 }
 /*Parent Reference*/
-.parent-nodes, .filefield-file {
+.parent-nodes, .filefield-file, .press-link {
 	float: left;
 	margin: 10px 0 0 17px;
 	width: 223px;
