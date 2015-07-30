@@ -52,7 +52,7 @@ p {
   	transition : all 750ms ease-out;
 }
 
-.primary_nav ul li a:hover, .primary_nav ul li.active a, .primary_children ul li a:hover, .primary_children ul li.active a {
+.primary_nav ul li a:hover, .primary_nav ul li.active-trail a, .primary_children ul li a:hover, .primary_children ul li a.active {
 	color: #b10700;
 	border-color: #b10700;
 }
