@@ -4,7 +4,7 @@ function da_basetheme_settings($saved_settings) {
 	$settings = array_merge($defaults, $saved_settings);
 	$form['show_children'] = array(
 		'#type' => 'checkbox',
-		'#title' => t('Show Primary Meny Children'),
+		'#title' => t('Show Primary Menu Children'),
 		'#default_value' => $settings['show_children'],
 	);
 
