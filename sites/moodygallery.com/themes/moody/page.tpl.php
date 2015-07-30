@@ -41,7 +41,7 @@
   </div>
   <?php endif; ?>
   <div class="content<?php print phptemplate_content_class($left, $right) ?>"<?php if(isset($node->nid)): ?> id="content-id-<?php print $node->nid ?>"<?php endif; ?>>
-  	<?php if($breadcrumb) : ?><div class="breadcrumb"><?php print $breadcrumb . ' › ' . $title; ?></div><?php endif; ?>
+  	<?php if($breadcrumb && !$is_front && arg(0) != 'current-group') : ?><div class="breadcrumb"><?php print $breadcrumb . ' › ' . $title; ?></div><?php endif; ?>
     <?php if ($title && !$is_front && arg(0) != 'current-group'): ?>
 		<h1 class="title <?php print $node->type ?>"><?php print $title; ?></h1>
 		<?php endif; ?>
