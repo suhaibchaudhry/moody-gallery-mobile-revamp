@@ -42,11 +42,11 @@
   <?php endif; ?>
   <div class="content<?php print phptemplate_content_class($left, $right) ?>"<?php if(isset($node->nid)): ?> id="content-id-<?php print $node->nid ?>"<?php endif; ?>>
   	<?php if($breadcrumb) : ?><div class="breadcrumb"><?php print $breadcrumb . ' › ' . $title; ?></div><?php endif; ?>
-    <?php if ($title && !$is_front): ?>
+    <?php if ($title && !$is_front && arg(0) != 'current-group'): ?>
 		<h1 class="title <?php print $node->type ?>"><?php print $title; ?></h1>
 		<?php endif; ?>
-    <?php if($tabs && !$is_front) : ?><?php print '<div class="tabs"><ul class="tabs primary">'.$tabs.'</ul></div>' ?><?php endif; ?>
-    <?php if($tabs2 && !$is_front) : ?><?php print '<div class="tabs"><ul class="tabs2 secondary">'.$tabs2.'</ul></div>' ?><?php endif; ?>
+    <?php if($tabs && !$is_front && arg(0) != 'current-group') : ?><?php print '<div class="tabs"><ul class="tabs primary">'.$tabs.'</ul></div>' ?><?php endif; ?>
+    <?php if($tabs2 && !$is_front && arg(0) != 'current-group') : ?><?php print '<div class="tabs"><ul class="tabs2 secondary">'.$tabs2.'</ul></div>' ?><?php endif; ?>
   	<?php print $content ?>
   </div>
   <?php if($right) : ?>
