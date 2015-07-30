@@ -420,6 +420,7 @@ display: table;
 	left: 0;
 	z-index: 9;
 	line-height: 34px;
+	overflow: hidden;
 }
 
 .footer p.footer-message {
