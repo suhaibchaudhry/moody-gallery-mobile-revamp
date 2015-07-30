@@ -16,27 +16,32 @@ p {
 	font-size: 11px;
 }
 
-.primary_nav {
+.primary_nav, .primary_children {
 	font-family: 'AvenirLTStd', Verdana, Arial, Helvetica, sans-serif;
+	margin: 0 0 10px;
 }
 
 .primary_nav a.mobile-menu-trigger {
 	display: none;
 }
 
-.primary_nav ul {
+.primary_nav ul, .primary_children ul {
 	display: table;
 	width: 100%;
 	table-layout: fixed;
 }
 
-.primary_nav ul li {
+.primary_nav ul li, .primary_children ul li {
 	display: table-cell;
 	text-align: center;
 	float: none;
 }
 
-.primary_nav ul li a {
+.primary_children ul.menu li {
+	float: none;
+}
+
+.primary_nav ul li a, .primary_children ul li a {
 	font-size: 13px;
 	text-align:center;
 	color: #000;
@@ -47,14 +52,14 @@ p {
   	transition : all 750ms ease-out;
 }
 
-.primary_nav ul li a:hover, .primary_nav ul li.active a {
+.primary_nav ul li a:hover, .primary_nav ul li.active a, .primary_children ul li a:hover, .primary_children ul li.active a {
 	color: #b10700;
 	border-color: #b10700;
 }
 
 /*Fields*/
 .field-field-artist-cv {
-	float: left;	
+	float: left;
 }
 .field-field-artist-work {
 	width: 690px;
