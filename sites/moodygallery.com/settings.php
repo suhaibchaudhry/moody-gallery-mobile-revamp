@@ -91,6 +91,9 @@
 $db_url = 'mysqli://moodygallery_use:xyz786@localhost/moodygallery_drupal';
 $db_prefix = '';
 
+$conf['cache_inc'] ='sites/all/modules/memcache/memcache.inc';
+$conf['memcache_key_prefix'] ='moody-production';
+
 /**
  * Database default collation.
  *
