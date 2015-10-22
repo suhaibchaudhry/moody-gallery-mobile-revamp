@@ -290,6 +290,7 @@ $conf['locale_custom_strings_en'] = array(
 	'Use the list below to configure and review the vocabularies defined on your site, or to list and manage the terms (tags) they contain. A vocabulary may (optionally) be tied to specific content types as shown in the <em>Type</em> column and, if so, will be displayed when creating or editing posts of that type. Multiple vocabularies tied to the same content type will be displayed in the order shown below. To change the order of a vocabulary, grab a drag-and-drop handle under the <em>Name</em> column and drag it to a new location in the list. (Grab a handle by clicking and holding the mouse while hovering over a handle icon.) Remember that your changes will not be saved until you click the <em>Save</em> button at the bottom of the page.' => 'Use the list below to configure and review the categories defined on your site, or to list and manage the subcategories they contain. To change the order of a category, grab a drag-and-drop handle under the <em>Name</em> column and drag it to a new location in the list. (Grab a handle by clicking and holding the mouse while hovering over a handle icon.) Remember that your changes will not be saved until you click the <em>Save</em> button at the bottom of the page.',
 	'Vocabularies' => 'Categories',
 
+	
 	//Forms
 	'Enter the terms you wish to search for.' => 'Search ...',
 	'!name field is required.' => '!name is required.',
