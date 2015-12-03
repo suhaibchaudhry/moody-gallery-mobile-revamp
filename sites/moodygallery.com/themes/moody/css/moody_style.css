@@ -515,4 +515,5 @@ span.wysiwyg_imageupload img {
 	text-shadow: none;
 	font-weight: normal;
 	color: #000;
+	white-space: pre-wrap;
 }
