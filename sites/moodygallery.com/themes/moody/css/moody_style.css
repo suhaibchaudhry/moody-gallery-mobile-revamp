@@ -499,3 +499,20 @@ span.wysiwyg_imageupload img {
 .fancybox-opened .fancybox-nav span {
 	visibility: visible !important;
 }
+
+.fancybox-opened .fancybox-title {
+	position: initial;
+	margin-bottom: initial;
+	bottom: initial;
+	right: initial;
+}
+
+.fancybox-opened .fancybox-title span.child {
+	display: initial;
+	margin-right: initial;
+	background: #fff;
+	border-radius: 0;
+	text-shadow: none;
+	font-weight: normal;
+	color: #000;
+}
