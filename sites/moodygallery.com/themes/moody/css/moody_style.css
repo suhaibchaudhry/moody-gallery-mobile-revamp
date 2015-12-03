@@ -4,7 +4,7 @@
 	src:  local('☺'), url('../fonts/AvenirLTStd-Medium.woff') format("woff");
 }
 form {
-	clear: both;	
+	clear: both;
 }
 h1, h2, h3, h4, h5, h6 {
 	font-family: 'AvenirLTStd', Verdana, Arial, Helvetica, sans-serif;
@@ -65,17 +65,17 @@ p {
 	width: 690px;
 }
 .field-field-artist-work, .field-field-artist-work .field-item {
-	float: left;	
+	float: left;
 }
 
 .field-field-artist-work .field-item {
-	margin: 0 5px 5px 0;	
+	margin: 0 5px 5px 0;
 }
 .field-field-featured-artist {
-	margin: 5px 0 0;	
+	margin: 5px 0 0;
 }
 .node-type-exhibition .field-field-artist-work {
-	margin: 10px 0 0;	
+	margin: 10px 0 0;
 }
 /*Exhibition View*/
 .view-exhibitions, .view-exhibitions .views-field-field-event-date-value, .view-exhibitions .views-field-body, .view-exhibitions .views-field-title, .view-exhibitions .views-field-field-featured-artist-nid, .view-exhibitions .views-field-field-cover-image-fidf {
@@ -83,13 +83,13 @@ p {
 	min-height: 160px;
 }
 .exhibition-headings {
-	width: 930px;	
+	width: 930px;
 }
 .exhibition-headings, .exhibition-headings .field-heading {
-	float: left;	
+	float: left;
 }
 .exhibition-headings .field-heading {
-	margin: 0 0 5px;	
+	margin: 0 0 5px;
 }
 .view-exhibitions .field-content {
 	margin-right: 10px;
@@ -101,14 +101,14 @@ p {
 	width: 148px;
 }
 .view-exhibitions .views-field-field-cover-image-fid {
-	width: 225px;	
+	width: 225px;
 	float: left;
 }
 .view-exhibitions .views-field-field-event-date-value, .exhibition-headings .exhibition-date {
 	 width: 195px;
 }
 .view-exhibitions p {
-	margin-top: 0;	
+	margin-top: 0;
 }
 .view-exhibitions  .views-row {
 	padding: 10px 0 0;
@@ -119,10 +119,10 @@ p {
 	font-style: italic;
 }
 .view-front .field-content {
-	text-align: center;	
+	text-align: center;
 }
 .view-front .views-field-field-cover-image-fid {
-	margin-bottom: 10px;	
+	margin-bottom: 10px;
 }
 .view-front .views-field-title a {
 	font-style: italic;
@@ -137,10 +137,10 @@ p.contactinfo {
 	margin: 10px 0 15px;
 }
 .googlemap {
-	float: right;	
+	float: right;
 }
 #contact-mail-page .form-item {
-	clear: left;	
+	clear: left;
 }
 /*Parent Reference*/
 .parent-nodes, .filefield-file, .press-link {
@@ -154,10 +154,10 @@ p.contactinfo {
 	width: 223px;
 }
 .parent_node {
-	margin: 0 0 5px;	
+	margin: 0 0 5px;
 }
 .parent_node a {
-	font-style: italic;	
+	font-style: italic;
 }
 .node-type-artist p, .node-type-exhibition p {
 	float: left;
@@ -166,20 +166,20 @@ p.contactinfo {
 }
 .view-front .views-field-field-other-artists-value {
 	float: right;
-	clear: both;	
+	clear: both;
 }
 #content-id-13235 h1 {
-	display: none;	
+	display: none;
 }
 #block-views-artists-block_1 h2 {
-	margin: 0 0 10px;	
+	margin: 0 0 10px;
 }
 .views-field-field-cover-image-fid {
-	text-align: center;	
+	text-align: center;
 }
 /*Breadcrumbs*/
 .article-title-crumb h1.title {
-	float: left;	
+	float: left;
 }
 .article-title-crumb {
 	float: left;
@@ -200,10 +200,10 @@ p.contactinfo {
 	color: #B10700;
 }
 .tabs {
-	clear: both;	
+	clear: both;
 }
 #content-id-13235 .tabs {
-	display: none;	
+	display: none;
 }
 #block-views-artists-block_1, #block-views-artists-block_2 {
 	position: relative;
@@ -494,4 +494,8 @@ span.wysiwyg_imageupload img {
 		width: 60%;
 		height: auto;
 	}
+}
+
+.fancybox-opened .fancybox-nav span {
+	visibility: visible !important;
 }
