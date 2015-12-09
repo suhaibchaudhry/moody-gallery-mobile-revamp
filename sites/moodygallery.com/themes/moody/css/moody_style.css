@@ -523,11 +523,3 @@ span.wysiwyg_imageupload img {
 	white-space: pre-wrap;
 	padding-left: 0;
 }
-
-@media only screen and (max-width: 505px) {
-	.node-type-artist .field-field-artist-work {
-		background: url("../images/arrow-text.png");
-		background-repeat: no-repeat;
-		background-position: 270px 0px;
-	}
-}
