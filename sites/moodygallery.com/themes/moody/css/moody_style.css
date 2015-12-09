@@ -505,6 +505,11 @@ span.wysiwyg_imageupload img {
 	margin-bottom: initial;
 	bottom: initial;
 	right: initial;
+	text-align: left;
+}
+
+.fancybox-skin {
+	padding-bottom: 0 !important;
 }
 
 .fancybox-opened .fancybox-title span.child {
@@ -516,6 +521,7 @@ span.wysiwyg_imageupload img {
 	font-weight: normal;
 	color: #000;
 	white-space: pre-wrap;
+	padding-left: 0;
 }
 
 @media only screen and (max-width: 505px) {
