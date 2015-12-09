@@ -523,3 +523,23 @@ span.wysiwyg_imageupload img {
 	white-space: pre-wrap;
 	padding-left: 0;
 }
+
+.field-field-artist-work {
+	position: relative;
+}
+
+a.scrollBottom {
+       display: none;
+       width: 70px;
+       height: 90px;
+       background: url("../images/arrow-text.png");
+       position: absolute;
+       top: 0;
+       right: 0;
+}
+
+@media only screen and (max-width: 980px) {
+	a.scrollBottom {
+		display: block;
+	}
+}
