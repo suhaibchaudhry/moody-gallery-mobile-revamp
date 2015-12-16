@@ -12,7 +12,7 @@ Drupal.behaviors.mobile_menu = function(context) {
 	$('a.scrollBottom', context).click(function(e) {
 		e.preventDefault();
 		$('html, body').animate({
-        		scrollTop: $('.node-content .field:eq(1)').offset().top
+        		scrollTop: $('.node-content .field').last().next().offset().top
    		}, 1000);
 	});
 }
