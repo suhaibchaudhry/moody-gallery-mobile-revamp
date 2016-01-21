@@ -41,6 +41,8 @@ function moody_preprocess_page(&$vars) {
 			}
 		}
 	}
+
+	$vars['footer_message'] = str_replace('[year]', date('Y'), $vars['footer_message']);
 }
 
 function phptemplate_parent_nodes($parent_nodes) {
