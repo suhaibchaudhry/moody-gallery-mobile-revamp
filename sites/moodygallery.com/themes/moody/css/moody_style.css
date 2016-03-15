@@ -509,11 +509,13 @@ span.wysiwyg_imageupload img {
 }
 
 .fancybox-skin {
+	background: #fff;
 	padding-bottom: 0 !important;
 }
 
 .fancybox-opened .fancybox-title span.child {
-	display: initial;
+	display: inline-block;
+	line-height: 16px;
 	margin-right: initial;
 	background: #fff;
 	border-radius: 0;
