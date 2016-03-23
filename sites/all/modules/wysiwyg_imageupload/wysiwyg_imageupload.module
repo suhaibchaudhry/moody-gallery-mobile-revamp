@@ -555,7 +555,7 @@ function _wysiwyg_imageupload_check_dependencies(&$requirements = NULL) {
         $requirements['wyiwyg_imageupload_jquery_ui']['value'] = $jquiv;
       }
       else {
-        drupal_set_message($msg, 'error', FALSE);
+        //drupal_set_message($msg, 'error', FALSE);
       }
       $error = TRUE;
     }
@@ -576,7 +576,7 @@ function _wysiwyg_imageupload_check_dependencies(&$requirements = NULL) {
         $requirements['wyiwyg_imageupload_jquery_update']['value'] = $jqv;
       }
       else {
-        drupal_set_message($msg, 'error', FALSE);
+        //drupal_set_message($msg, 'error', FALSE);
       }
       $error = TRUE;
     }
@@ -597,7 +597,7 @@ function _wysiwyg_imageupload_check_dependencies(&$requirements = NULL) {
         $requirements['wyiwyg_imageupload_imageapi']['value'] = 'None activated';
       }
       else {
-        drupal_set_message($msg, 'error', FALSE);
+        //drupal_set_message($msg, 'error', FALSE);
       }
       $error = TRUE;
     }
@@ -617,7 +617,7 @@ function _wysiwyg_imageupload_check_dependencies(&$requirements = NULL) {
       $requirements['wyiwyg_imageupload_user_permissions']['value'] = 'Not set';
     }
     else {
-      drupal_set_message($msg, 'error', FALSE);
+      //drupal_set_message($msg, 'error', FALSE);
     }
     $error = TRUE;
   }
