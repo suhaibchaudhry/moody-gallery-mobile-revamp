@@ -10,6 +10,7 @@
   <?php print drupal_get_css(); ?>
   <?php $vars['scripts'] = drupal_get_js('header'); ?>
   <?php function_exists('jquery_update_preprocess_page') && jquery_update_preprocess_page($vars); ?>
+  <?php $vars['scripts'] = str_replace("jquery_update/replace", "jquery_update/replace_imce", $vars["scripts"]); ?>
   <?php print $vars['scripts']; ?>
   <style media="all" type="text/css">/*Quick-override*/</style>
 </head>

@@ -9,7 +9,6 @@
  * q = imce.
  */
 function imce() {
-  jquery_update_libs_change_path(drupal_get_path('module', 'jquery_update') .'/replace_imce');
   module_invoke('admin_menu', 'suppress');//suppress admin_menu
   $jsop = isset($_GET['jsop']) ? $_GET['jsop'] : NULL;
   print imce_page($GLOBALS['user'], $jsop);
