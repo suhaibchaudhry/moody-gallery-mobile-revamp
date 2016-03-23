@@ -731,7 +731,7 @@ decodePlain: function (str) {
 
 //global ajax error function
 ajaxError: function (e, response, settings, thrown) {
-  imce.setMessage(Drupal.ahahError(response, settings.url).replace(/\n/g, '<br />'), 'error');
+  //imce.setMessage(Drupal.ahahError(response, settings.url).replace(/\n/g, '<br />'), 'error');
 },
 
 //convert button elements to standard input buttons
