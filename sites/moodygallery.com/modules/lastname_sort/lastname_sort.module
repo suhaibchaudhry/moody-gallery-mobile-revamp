@@ -1,10 +1,30 @@
 <?php
+function _moody_lastNameSort ($a, $b) {
+    $a = preg_replace('/\s*\([^\)]*\)?/', '', $a);
+    $b = preg_replace('/\s*\([^\)]*\)?/', '', $b);
+
+    $aLast = end(explode(' ', $a));
+    $bLast = end(explode(' ', $b));
+
+    return strcasecmp($aLast, $bLast);
+}
+
 function lastname_sort_init() {
 	if (drupal_is_front_page()) {
 		drupal_add_js(drupal_get_path('module', 'lastname_sort').'/js/front-grid.js');
 		drupal_add_css(drupal_get_path('module', 'lastname_sort').'/css/front-grid.css');
 	}
 }
+
+function lastname_sort_form_alter(&$form, &$form_state, $form_id) {
+	if($form_id == 'views_exposed_form' && $form['#id'] == 'views-exposed-form-News-page-1') {
+		foreach($form['field_news_artist_nid']['#options'] as $key => $option) {
+	$form['field_news_artist_nid']['#options'][$key] = trim(substr(trim($form['field_news_artist_nid']['#options'][$key]), 0, -1));
+	}
+	uasort($form['field_news_artist_nid']['#options'], '_moody_lastNameSort');
+}
+}
+
 function lastname_sort_views_query_alter(&$view, &$query) {
 	if($view->name == 'artists') {
 		$query->orderby[1] = "REPLACE(SUBSTRING(node.title, LENGTH(node.title)-INSTR(REVERSE(node.title), ' ')+2), 'Bloom', 'Manual') ASC";
