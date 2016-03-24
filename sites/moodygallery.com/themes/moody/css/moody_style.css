@@ -547,6 +547,16 @@ span.wysiwyg_imageupload {
 
 }
 
+.views-exposed-form .views-exposed-widget {
+   float: none;
+   padding: 0;
+}
+
+.views-exposed-widget .views-submit-button input, .views-exposed-form .views-exposed-widget select {
+	width: 100%;
+        max-width: 100%;
+}
+
 @media only screen and (max-width: 980px) {
 	a.scrollBottom {
 		display: block;
