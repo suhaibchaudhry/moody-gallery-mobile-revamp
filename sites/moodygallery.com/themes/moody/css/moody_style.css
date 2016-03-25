@@ -552,7 +552,7 @@ span.wysiwyg_imageupload {
    padding: 0;
 }
 
-.views-exposed-form .views-submit-button input, .views-exposed-form .views-exposed-widget select {
+.views-exposed-widget .views-submit-button input, .views-exposed-form .views-exposed-widget select {
 	width: 100%;
         max-width: 100%;
 }
