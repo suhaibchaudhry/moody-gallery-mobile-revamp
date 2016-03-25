@@ -557,10 +557,6 @@ span.wysiwyg_imageupload {
         max-width: 100%;
 }
 
- .views-exposed-form .views-exposed-widget select option {
-   text-align: center;
-}
-
 @media only screen and (max-width: 980px) {
 	a.scrollBottom {
 		display: block;
