@@ -15,6 +15,7 @@ function external_links_filter($op, $delta = 0, $format = -1, $text = '', $cache
     case "process":
 		$pattern = '/target\="(\w)*"/';
 		$text = preg_replace($pattern, 'rel="external"', $text);
+		$text = str_replace(array('font-size:xx-small;', 'font-size:x-small;', 'font-size:small;', 'font-size:medium;', 'font-size:large;', 'font-size:x-large;', 'font-size:xx-large;'), array('font-size:8px', 'font-size:9px', 'font-size:10px', 'font-size:11px', 'font-size:12px', 'font-size:13px', 'font-size:15px'), $text);
 		return $text;
 	default:
 		return $text;
