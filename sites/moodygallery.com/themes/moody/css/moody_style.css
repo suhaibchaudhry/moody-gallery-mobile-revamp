@@ -463,7 +463,11 @@ display: table;
 .primary_nav a.mobile-menu-trigger:hover {
 	background-position: 53px 0;
 }
-
+span.wysiwyg_imageupload {
+	clear: both;
+	width: 100%;
+	text-align: left;
+} 
 span.wysiwyg_imageupload img {
 	width: 100%;
 	height: auto;
