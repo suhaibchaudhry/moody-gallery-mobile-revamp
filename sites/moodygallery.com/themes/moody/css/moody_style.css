@@ -15,7 +15,15 @@ p {
 	color: #666;
 	font-size: 11px;
 }
-
+span.wysiwyg_imageupload {
+        float: none;
+        clear: both;
+	width: 100%;
+        text-align: left;
+	box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        -webkit-box-sizing: border-box;
+}
 .primary_nav, .primary_children {
 	font-family: 'AvenirLTStd', Verdana, Arial, Helvetica, sans-serif;
 	margin: 0 0 10px;
@@ -463,14 +471,11 @@ display: table;
 .primary_nav a.mobile-menu-trigger:hover {
 	background-position: 53px 0;
 }
-span.wysiwyg_imageupload {
-	float: none;
-	clear: both;
-	width: 100%;
-	text-align: left;
-} 
 span.wysiwyg_imageupload img {
-	/*width: 100%;*/
+	width: 100%;
+	box-sizing: border-box;
+	-moz-box-sizing: border-box;
+	-webkit-box-sizing: border-box;
 	height: auto;
 }
 
