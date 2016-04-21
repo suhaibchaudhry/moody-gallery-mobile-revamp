@@ -469,7 +469,7 @@ span.wysiwyg_imageupload {
 	text-align: left;
 } 
 span.wysiwyg_imageupload img {
-	width: 100%;
+	/*width: 100%;*/
 	height: auto;
 }
 
