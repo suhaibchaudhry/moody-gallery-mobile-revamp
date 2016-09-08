@@ -557,6 +557,10 @@ span.wysiwyg_imageupload {
 
 }
 
+.views-field-body .field-content p {
+	padding: 0 40px 0 0;
+}
+
 @media only screen and (max-width: 980px) {
 	a.scrollBottom {
 		display: block;
